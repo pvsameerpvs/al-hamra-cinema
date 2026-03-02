@@ -8,9 +8,9 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: Request) {
   try {
-    const { seatId, customerName, phone, amount } = await req.json();
+    const { seatIds, customerName, phone, email, amount } = await req.json();
 
-    if (!seatId || !customerName || !phone || amount === undefined) {
+    if (!seatIds || !Array.isArray(seatIds) || seatIds.length === 0 || !customerName || !phone || !email || amount === undefined) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -24,15 +24,18 @@ export async function POST(req: Request) {
     });
     const date = new Date().toISOString().split("T")[0];
 
-    // 1. Update seat status to 'Booked'
-    await updateSeatStatus(seatId, "Booked");
+    // 1. Update all seat statuses to 'Booked' sequentially to avoid rate limits
+    for (const id of seatIds) {
+      await updateSeatStatus(id, "Booked");
+    }
 
     // 2. Insert booking record
     await createBookingRecord(
       bookingId,
-      seatId,
+      seatIds.join(", "),
       customerName,
       phone,
+      email,
       amount,
       "Paid"
     );

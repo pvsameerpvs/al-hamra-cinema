@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 export function SeatGrid() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -52,15 +52,21 @@ export function SeatGrid() {
       });
       return;
     }
-    setSelectedSeat(seat);
-    setIsDialogOpen(true);
+    setSelectedSeats((prev) => {
+      const isSelected = prev.some((s) => s.seat_id === seat.seat_id);
+      if (isSelected) {
+        return prev.filter((s) => s.seat_id !== seat.seat_id);
+      }
+      return [...prev, seat];
+    });
   };
 
-  const handleBookingComplete = (seatId: string) => {
+  const handleBookingComplete = (seatIds: string[]) => {
     // Optimistic Update
     setSeats((prev) =>
-      prev.map((s) => (s.seat_id === seatId ? { ...s, status: "Booked" } : s))
+      prev.map((s) => (seatIds.includes(s.seat_id) ? { ...s, status: "Booked" } : s))
     );
+    setSelectedSeats([]);
   };
 
   if (loading) {
@@ -83,54 +89,79 @@ export function SeatGrid() {
     "N", "M", "L", "K", "J", "I", "H", "G", "F", "E", "D", "C", "B", "A",
   ];
 
-  const getSeatColor = (status: string) => {
-    switch (status) {
-      case "Available":
-        return "bg-green-500 hover:bg-green-400 text-white";
-      case "Reserved":
-        return "bg-yellow-500 text-white cursor-not-allowed border-yellow-600";
-      case "Booked":
-        return "bg-red-500 text-white cursor-not-allowed border-red-600";
-      default:
-        return "bg-gray-500 text-white";
-    }
-  };
-
   const renderGrid = (
     sectionSeats: Seat[],
-    rows: string[]
+    rows: string[],
+    sectionName: string
   ) => {
     return (
-      <div className="flex flex-col gap-2 items-center">
+      <div className="flex flex-col gap-3 items-center w-max mx-auto px-4">
         {rows.map((row) => {
           const rowSeats = sectionSeats
             .filter((s) => s.row === row)
             .sort((a, b) => a.seat_number - b.seat_number);
 
-          // If no seats loaded yet, we can render placeholders based on the required size
-          // But since we rely on DB, if DB is empty, nothing renders.
           if (rowSeats.length === 0) return null;
 
+          // Determine aisle thresholds based on section and row
+          let leftCutoff = 10;
+          let centerCutoff = 27;
+
+          // Balcony Rows D and E have slightly shifted aisles
+          if (sectionName === "Balcony" && (row === "D" || row === "E")) {
+            leftCutoff = 11;
+            centerCutoff = 28;
+          }
+
+          const leftSeats = rowSeats.filter((s) => s.seat_number <= leftCutoff);
+          const centerSeats = rowSeats.filter(
+            (s) => s.seat_number > leftCutoff && s.seat_number <= centerCutoff
+          );
+          const rightSeats = rowSeats.filter((s) => s.seat_number > centerCutoff);
+
+          const renderSeat = (seat: Seat) => {
+            const isSelected = selectedSeats.some(s => s.seat_id === seat.seat_id);
+            let seatStyle = "";
+
+            if (seat.status === "Booked" || seat.status === "Reserved") {
+              seatStyle = "bg-muted border border-muted text-muted-foreground opacity-50 cursor-not-allowed";
+            } else if (isSelected) {
+              seatStyle = "bg-white text-black border border-white hover:bg-gray-200";
+            } else {
+              seatStyle = "bg-transparent border border-muted-foreground text-muted-foreground hover:border-white hover:text-white";
+            }
+
+            return (
+              <Button
+                key={seat.seat_id}
+                className={`w-8 h-8 md:w-10 md:h-10 p-0 text-xs font-semibold flex items-center justify-center rounded-sm transition-all duration-200 hover:scale-110 active:scale-95 ${seatStyle}`}
+                onClick={() => handleSeatClick(seat)}
+                title={`Seat ${seat.seat_id} - ${seat.price} AED`}
+              >
+                {seat.seat_number}
+              </Button>
+            );
+          };
+
           return (
-            <div key={row} className="flex gap-2 items-center">
-              <span className="w-6 text-center font-bold text-muted-foreground">
+            <div key={row} className="flex gap-4 md:gap-8 items-center justify-between w-full">
+              <span className="w-8 text-center font-bold text-muted-foreground whitespace-nowrap">
                 {row}
               </span>
-              <div className="flex gap-1 flex-wrap justify-center">
-                {rowSeats.map((seat) => (
-                  <Button
-                    key={seat.seat_id}
-                    className={`w-8 h-8 md:w-10 md:h-10 p-0 text-xs transition-transform duration-200 hover:scale-110 active:scale-95 shadow-sm ${getSeatColor(
-                      seat.status
-                    )}`}
-                    onClick={() => handleSeatClick(seat)}
-                    title={`Seat ${seat.seat_id} - ${seat.price} AED`}
-                  >
-                    {seat.seat_number}
-                  </Button>
-                ))}
+              
+              <div className="flex gap-1 md:gap-1.5 flex-nowrap">
+                {leftSeats.map(renderSeat)}
               </div>
-              <span className="w-6 text-center font-bold text-muted-foreground">
+              
+              <div className="flex gap-1 md:gap-1.5 flex-nowrap">
+                {centerSeats.map(renderSeat)}
+              </div>
+              
+              <div className="flex gap-1 md:gap-1.5 flex-nowrap">
+                {rightSeats.map(renderSeat)}
+              </div>
+
+              <span className="w-8 text-center font-bold text-muted-foreground whitespace-nowrap">
                 {row}
               </span>
             </div>
@@ -149,16 +180,16 @@ export function SeatGrid() {
         </h2>
         <div className="flex gap-4 p-3 bg-muted/50 rounded-lg border border-border">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-green-500 shrink-0"></div>
-            <span className="text-sm text-muted-foreground">Available</span>
+            <div className="w-4 h-4 rounded-sm border border-muted-foreground bg-transparent shrink-0"></div>
+            <span className="text-sm text-muted-foreground">Unselected</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-yellow-500 shrink-0"></div>
+            <div className="w-4 h-4 rounded-sm bg-white shrink-0"></div>
+            <span className="text-sm text-muted-foreground">Selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-sm bg-muted shrink-0 opacity-50"></div>
             <span className="text-sm text-muted-foreground">Reserved</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-red-500 shrink-0"></div>
-            <span className="text-sm text-muted-foreground">Booked</span>
           </div>
         </div>
       </div>
@@ -170,7 +201,7 @@ export function SeatGrid() {
           </Badge>
         </div>
         <div className="overflow-x-auto pb-4">
-          {renderGrid(balconySeats, balconyRows)}
+          {renderGrid(balconySeats, balconyRows, "Balcony")}
         </div>
       </div>
 
@@ -182,7 +213,7 @@ export function SeatGrid() {
           </Badge>
         </div>
         <div className="overflow-x-auto pb-4">
-          {renderGrid(orchestraSeats, orchestraRows)}
+          {renderGrid(orchestraSeats, orchestraRows, "Orchestra")}
         </div>
       </div>
 
@@ -191,11 +222,24 @@ export function SeatGrid() {
         <span className="text-muted-foreground/80 font-semibold tracking-[1em] mb-4 text-sm uppercase">Screen</span>
       </div>
 
-      {selectedSeat && (
+      {selectedSeats.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-card/95 backdrop-blur border-t border-border shadow-lg z-50 flex justify-center items-center gap-4 sm:gap-6 animate-in slide-in-from-bottom-5">
+          <div className="text-foreground flex items-center gap-2 sm:gap-4 text-sm sm:text-base">
+            <span><strong className="text-primary">{selectedSeats.length}</strong> seats selected</span>
+            <span className="text-muted-foreground">|</span>
+            <span>Total: <strong>{selectedSeats.reduce((sum, s) => sum + s.price, 0)} AED</strong></span>
+          </div>
+          <Button onClick={() => setIsDialogOpen(true)} size="default" className="min-w-[120px] sm:min-w-[150px]">
+            Proceed to Booking
+          </Button>
+        </div>
+      )}
+
+      {selectedSeats.length > 0 && (
         <BookingDialog
           isOpen={isDialogOpen}
           onClose={() => setIsDialogOpen(false)}
-          seat={selectedSeat}
+          seats={selectedSeats}
           onBookingComplete={handleBookingComplete}
         />
       )}

@@ -2,6 +2,45 @@ import { sheets, SPREADSHEET_ID } from "./google";
 import { Seat, SeatStatus } from "./types";
 
 export async function fetchAllSeats(): Promise<Seat[]> {
+  // Fallback to mock data if the private key is not configured or using the default dummy value
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    console.warn("Using mock seat data because GOOGLE_PRIVATE_KEY is not configured.");
+    const mockSeats: Seat[] = [];
+    
+    // Generate mock Orchestra seats (10 rows, 20 seats each)
+    const orchestraRows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+    orchestraRows.forEach((row) => {
+      for (let i = 1; i <= 20; i++) {
+        mockSeats.push({
+          seat_id: `O-${row}-${i}`,
+          section: "Orchestra",
+          row,
+          seat_number: i,
+          status: Math.random() > 0.8 ? "Booked" : "Available", // ~20% booked initially
+          price: 15,
+        });
+      }
+    });
+
+    // Generate mock Balcony seats (5 rows, 15 seats each)
+    const balconyRows = ["A", "B", "C", "D", "E"];
+    balconyRows.forEach((row) => {
+      for (let i = 1; i <= 15; i++) {
+        mockSeats.push({
+          seat_id: `B-${row}-${i}`,
+          section: "Balcony",
+          row,
+          seat_number: i,
+          status: Math.random() > 0.8 ? "Booked" : "Available",
+          price: 25,
+        });
+      }
+    });
+
+    return mockSeats;
+  }
+
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -26,6 +65,12 @@ export async function fetchAllSeats(): Promise<Seat[]> {
 }
 
 export async function updateSeatStatus(seatId: string, newStatus: SeatStatus) {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    console.warn(`Mock: updateSeatStatus(${seatId}, ${newStatus}) bypassed.`);
+    return;
+  }
+
   // First, find the row index of the seat
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
@@ -56,26 +101,34 @@ export async function updateSeatStatus(seatId: string, newStatus: SeatStatus) {
 
 export async function createBookingRecord(
   bookingId: string,
-  seatId: string,
+  seatIds: string,
   customerName: string,
   phone: string,
+  email: string,
   amount: number,
   paymentStatus: string
 ) {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    console.warn(`Mock: createBookingRecord(${bookingId}) bypassed.`);
+    return;
+  }
+
   const createdAt = new Date().toISOString();
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: "bookings!A:G",
+    range: "bookings!A:H",
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
       values: [
         [
           bookingId,
-          seatId,
+          seatIds,
           customerName,
           phone,
+          email,
           amount,
           paymentStatus,
           createdAt,
@@ -91,6 +144,12 @@ export async function createRevenueLog(
   month: string,
   date: string
 ) {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    console.warn(`Mock: createRevenueLog bypassed.`);
+    return;
+  }
+
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: "revenue_logs!A:D",
@@ -103,6 +162,22 @@ export async function createRevenueLog(
 }
 
 export async function getDashboardStats() {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    console.warn("Mock: getDashboardStats returning mock data.");
+    return {
+      totalTicketsSold: 120,
+      totalRevenue: 2800,
+      monthlyTicketsSold: 45,
+      monthlyRevenue: 950,
+      chartData: [
+        { name: "January 2026", revenue: 800 },
+        { name: "February 2026", revenue: 1050 },
+        { name: "March 2026", revenue: 950 },
+      ],
+    };
+  }
+
   try {
     const revenueRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,

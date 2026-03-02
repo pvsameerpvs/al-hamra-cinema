@@ -18,8 +18,7 @@ export default function BookingPage() {
             Back to Dashboard
           </Link>
         </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Counter Booking</h1>
-
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Counter Booking</h1>
       </section>
 
       <section

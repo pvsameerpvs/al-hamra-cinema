@@ -18,26 +18,29 @@ import { Loader2 } from "lucide-react";
 interface BookingDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  seat: Seat;
-  onBookingComplete: (seatId: string) => void;
+  seats: Seat[];
+  onBookingComplete: (seatIds: string[]) => void;
 }
 
 export function BookingDialog({
   isOpen,
   onClose,
-  seat,
+  seats,
   onBookingComplete,
 }: BookingDialogProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const totalAmount = seats.reduce((sum, s) => sum + s.price, 0);
+
   const handleBooking = async () => {
-    if (!name.trim() || !phone.trim()) {
+    if (!name.trim() || !phone.trim() || !email.trim()) {
       toast({
         title: "Validation Error",
-        description: "Name and Phone are required",
+        description: "Name, Phone, and Email are required",
         variant: "destructive",
       });
       return;
@@ -49,25 +52,26 @@ export function BookingDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          seatId: seat.seat_id,
+          seatIds: seats.map(s => s.seat_id),
           customerName: name,
           phone,
-          amount: seat.price,
+          email,
+          amount: totalAmount,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to book seat");
+        throw new Error(data.error || "Failed to book seats");
       }
 
       toast({
         title: "Booking Confirmed! 🎉",
-        description: `Your seat ${seat.seat_id} has been successfully booked.`,
+        description: `Your seats ${seats.map(s => s.seat_id).join(", ")} have been successfully booked.`,
       });
 
-      onBookingComplete(seat.seat_id);
+      onBookingComplete(seats.map(s => s.seat_id));
       onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -87,8 +91,8 @@ export function BookingDialog({
         <DialogHeader>
           <DialogTitle>Complete Your Booking</DialogTitle>
           <DialogDescription>
-            You are booking seat <strong>{seat.seat_id}</strong> in the{" "}
-            <strong>{seat.section}</strong> section.
+            You are booking <strong>{seats.length}</strong> seat(s):{" "}
+            <strong>{seats.map(s => s.seat_id).join(", ")}</strong>.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -116,9 +120,22 @@ export function BookingDialog({
               required
             />
           </div>
+          <div className="grid gap-2">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email Address
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="john@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
           <div className="bg-muted p-3 rounded-lg flex justify-between items-center mt-2">
             <span className="text-sm">Total Amount:</span>
-            <span className="font-bold text-lg">{seat.price} AED</span>
+            <span className="font-bold text-lg">{totalAmount} AED</span>
           </div>
         </div>
         <DialogFooter>
