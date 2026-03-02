@@ -124,11 +124,11 @@ export function SeatGrid() {
             let seatStyle = "";
 
             if (seat.status === "Booked" || seat.status === "Reserved") {
-              seatStyle = "bg-muted border border-muted text-muted-foreground opacity-50 cursor-not-allowed";
+              seatStyle = "bg-yellow-500/80 border border-yellow-600 text-yellow-950 cursor-not-allowed";
             } else if (isSelected) {
-              seatStyle = "bg-white text-black border border-white hover:bg-gray-200";
+              seatStyle = "bg-green-500 border border-green-600 text-white hover:bg-green-600";
             } else {
-              seatStyle = "bg-transparent border border-muted-foreground text-muted-foreground hover:border-white hover:text-white";
+              seatStyle = "bg-red-500/80 border border-red-600 text-white hover:bg-red-600";
             }
 
             return (
@@ -186,16 +186,16 @@ export function SeatGrid() {
         </h2>
         <div className="flex gap-4 p-3 bg-muted/50 rounded-lg border border-border">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-sm border border-muted-foreground bg-transparent shrink-0"></div>
-            <span className="text-sm text-muted-foreground">Unselected</span>
+            <div className="w-4 h-4 rounded-sm bg-red-500/80 border border-red-600 shrink-0"></div>
+            <span className="text-sm text-foreground">Unselected</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-sm bg-white shrink-0"></div>
-            <span className="text-sm text-muted-foreground">Selected</span>
+            <div className="w-4 h-4 rounded-sm bg-green-500 border border-green-600 shrink-0"></div>
+            <span className="text-sm text-foreground">Selected</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-sm bg-muted shrink-0 opacity-50"></div>
-            <span className="text-sm text-muted-foreground">Reserved</span>
+            <div className="w-4 h-4 rounded-sm bg-yellow-500/80 border border-yellow-600 shrink-0"></div>
+            <span className="text-sm text-foreground">Reserved</span>
           </div>
         </div>
       </div>
