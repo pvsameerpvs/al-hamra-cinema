@@ -95,7 +95,7 @@ export function SeatGrid() {
     sectionName: string
   ) => {
     return (
-      <div className="flex flex-col gap-1 md:gap-3 items-center w-full mx-auto px-1 md:px-4">
+      <div className="flex flex-col gap-0.5 sm:gap-1 md:gap-2 items-center w-full mx-auto">
         {rows.map((row) => {
           const rowSeats = sectionSeats.filter((s) => s.row === row);
 
@@ -128,7 +128,7 @@ export function SeatGrid() {
             return (
               <Button
                 key={seat.seat_id}
-                className={`w-[clamp(12px,2.2vw,36px)] h-[clamp(12px,2.2vw,36px)] min-w-[12px] p-0 text-[clamp(6px,1vw,14px)] font-bold flex items-center justify-center rounded-sm transition-all duration-200 hover:scale-[1.15] active:scale-95 shrink-0 ${seatStyle}`}
+                className={`w-[clamp(7.5px,2vw,28px)] h-[clamp(7.5px,2vw,28px)] min-w-[7.5px] p-0 text-[clamp(4.5px,0.8vw,11px)] leading-none font-bold flex flex-shrink-0 items-center justify-center rounded-[2px] transition-all duration-200 hover:scale-[1.15] active:scale-95 ${seatStyle}`}
                 onClick={() => handleSeatClick(seat)}
                 title={`Seat ${seat.seat_id} - ${seat.price} AED`}
               >
@@ -138,30 +138,30 @@ export function SeatGrid() {
           };
 
           return (
-            <div key={row} className="flex gap-1 sm:gap-2 md:gap-4 items-center justify-center w-full max-w-[1200px] flex-nowrap">
-              <span className="w-3 sm:w-5 md:w-8 text-center font-bold text-muted-foreground whitespace-nowrap text-[clamp(8px,1.5vw,16px)] shrink-0">
+            <div key={row} className="flex gap-[1px] sm:gap-1 md:gap-2 items-center justify-center w-full max-w-full flex-nowrap overflow-visible">
+              <span className="w-2.5 sm:w-4 md:w-6 text-center font-bold text-muted-foreground whitespace-nowrap text-[clamp(6px,1.2vw,14px)] shrink-0">
                 {row}
               </span>
               
-              <div className="flex justify-center items-center gap-[2px] sm:gap-1 md:gap-2">
-                <div className="flex gap-[1px] md:gap-1 flex-nowrap shrink-0">
+              <div className="flex justify-center items-center gap-[2px] sm:gap-[3px] md:gap-2">
+                <div className="flex gap-[0.5px] sm:gap-[1px] md:gap-1 flex-nowrap shrink-0">
                   {leftSeats.map(renderSeat)}
                 </div>
                 
-                {leftSeats.length > 0 && <div className="w-1.5 sm:w-3 md:w-6 shrink-0" />}
+                {leftSeats.length > 0 && <div className="w-1 sm:w-2 md:w-5 shrink-0" />}
 
-                <div className="flex gap-[1px] md:gap-1 flex-nowrap shrink-0">
+                <div className="flex gap-[0.5px] sm:gap-[1px] md:gap-1 flex-nowrap shrink-0">
                   {centerSeats.map(renderSeat)}
                 </div>
                 
-                {rightSeats.length > 0 && <div className="w-1.5 sm:w-3 md:w-6 shrink-0" />}
+                {rightSeats.length > 0 && <div className="w-1 sm:w-2 md:w-5 shrink-0" />}
 
-                <div className="flex gap-[1px] md:gap-1 flex-nowrap shrink-0">
+                <div className="flex gap-[0.5px] sm:gap-[1px] md:gap-1 flex-nowrap shrink-0">
                   {rightSeats.map(renderSeat)}
                 </div>
               </div>
 
-              <span className="w-3 sm:w-5 md:w-8 text-center font-bold text-muted-foreground whitespace-nowrap text-[clamp(8px,1.5vw,16px)] shrink-0">
+              <span className="w-2.5 sm:w-4 md:w-6 text-center font-bold text-muted-foreground whitespace-nowrap text-[clamp(6px,1.2vw,14px)] shrink-0">
                 {row}
               </span>
             </div>
@@ -172,8 +172,8 @@ export function SeatGrid() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 md:p-6 bg-card rounded-xl shadow-xl border border-border">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+    <div className="w-full  mx-auto p-1 sm:p-4 md:p-6 ">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 md:mb-10 gap-4">
         <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
           <span className="bg-accent text-accent-foreground p-2 rounded-lg">🎭</span>
           Select Your Seat
@@ -200,7 +200,7 @@ export function SeatGrid() {
             Balcony (35 AED)
           </Badge>
         </div>
-        <div className="w-full overflow-hidden pb-4">
+        <div className="w-full overflow-visible pb-4 px-0.5">
           {renderGrid(balconySeats, balconyRows, "Balcony")}
         </div>
       </div>
@@ -212,7 +212,7 @@ export function SeatGrid() {
             Orchestra (30 AED)
           </Badge>
         </div>
-        <div className="w-full overflow-hidden pb-4">
+        <div className="w-full overflow-visible pb-4 px-0.5">
           {renderGrid(orchestraSeats, orchestraRows, "Orchestra")}
         </div>
       </div>
