@@ -23,17 +23,25 @@ export async function fetchAllSeats(): Promise<Seat[]> {
       }
     });
 
-    // Generate mock Balcony seats (5 rows, 15 seats each)
-    const balconyRows = ["A", "B", "C", "D", "E"];
-    balconyRows.forEach((row) => {
-      for (let i = 1; i <= 15; i++) {
+    // Generate mock Balcony seats (A=36, B=37, C=37, D=39, E=39, F=37)
+    const balconyConfig: Record<string, number> = {
+      "A": 36,
+      "B": 37,
+      "C": 37,
+      "D": 39,
+      "E": 39,
+      "F": 37,
+    };
+    
+    Object.keys(balconyConfig).forEach((row) => {
+      for (let i = 1; i <= balconyConfig[row]; i++) {
         mockSeats.push({
           seat_id: `B-${row}-${i}`,
           section: "Balcony",
           row,
           seat_number: i,
           status: Math.random() > 0.8 ? "Booked" : "Available",
-          price: 25,
+          price: 35,
         });
       }
     });
