@@ -8,10 +8,10 @@ export async function fetchAllSeats(): Promise<Seat[]> {
     console.warn("Using mock seat data because GOOGLE_PRIVATE_KEY is not configured.");
     const mockSeats: Seat[] = [];
     
-    // Generate mock Orchestra seats (10 rows, 20 seats each)
-    const orchestraRows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+    // Generate mock Orchestra seats (A to N, 37 seats each)
+    const orchestraRows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"];
     orchestraRows.forEach((row) => {
-      for (let i = 1; i <= 20; i++) {
+      for (let i = 1; i <= 37; i++) {
         mockSeats.push({
           seat_id: `O-${row}-${i}`,
           section: "Orchestra",

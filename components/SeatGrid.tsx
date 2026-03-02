@@ -84,9 +84,9 @@ export function SeatGrid() {
 
   // Balcony Rows: A -> F (A is back row, F is closest to screen)
   const balconyRows = ["A", "B", "C", "D", "E", "F"];
-  // Orchestra Rows: N -> A
+  // Orchestra Rows: A -> N
   const orchestraRows = [
-    "N", "M", "L", "K", "J", "I", "H", "G", "F", "E", "D", "C", "B", "A",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
   ];
 
   const renderGrid = (
@@ -101,27 +101,17 @@ export function SeatGrid() {
 
           if (rowSeats.length === 0) return null;
 
-          let leftSeats: Seat[] = [];
-          let centerSeats: Seat[] = [];
-          let rightSeats: Seat[] = [];
+          let upperCutoff = 27;
+          let lowerCutoff = 10;
 
-          if (sectionName === "Balcony") {
-            let upperCutoff = 27;
-            let lowerCutoff = 10;
-            if (row === "D" || row === "E") {
-              upperCutoff = 28;
-              lowerCutoff = 11;
-            }
-            leftSeats = rowSeats.filter((s) => s.seat_number > upperCutoff).sort((a, b) => b.seat_number - a.seat_number);
-            centerSeats = rowSeats.filter((s) => s.seat_number <= upperCutoff && s.seat_number > lowerCutoff).sort((a, b) => b.seat_number - a.seat_number);
-            rightSeats = rowSeats.filter((s) => s.seat_number <= lowerCutoff).sort((a, b) => b.seat_number - a.seat_number);
-          } else {
-            let leftCutoff = 10;
-            let centerCutoff = 27;
-            leftSeats = rowSeats.filter((s) => s.seat_number <= leftCutoff).sort((a, b) => a.seat_number - b.seat_number);
-            centerSeats = rowSeats.filter((s) => s.seat_number > leftCutoff && s.seat_number <= centerCutoff).sort((a, b) => a.seat_number - b.seat_number);
-            rightSeats = rowSeats.filter((s) => s.seat_number > centerCutoff).sort((a, b) => a.seat_number - b.seat_number);
+          if (sectionName === "Balcony" && (row === "D" || row === "E")) {
+            upperCutoff = 28;
+            lowerCutoff = 11;
           }
+
+          const leftSeats = rowSeats.filter((s) => s.seat_number > upperCutoff).sort((a, b) => b.seat_number - a.seat_number);
+          const centerSeats = rowSeats.filter((s) => s.seat_number <= upperCutoff && s.seat_number > lowerCutoff).sort((a, b) => b.seat_number - a.seat_number);
+          const rightSeats = rowSeats.filter((s) => s.seat_number <= lowerCutoff).sort((a, b) => b.seat_number - a.seat_number);
 
           const renderSeat = (seat: Seat) => {
             const isSelected = selectedSeats.some(s => s.seat_id === seat.seat_id);
