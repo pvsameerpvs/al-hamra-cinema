@@ -42,28 +42,32 @@ export function RevenueChart({ data }: { data: ChartData[] }) {
               data={data}
               margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+              />
               <XAxis
                 dataKey="name"
-                stroke="#888888"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                stroke="#888888"
+                stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `${value}`}
               />
               <Tooltip
-                cursor={{ fill: "#222" }}
+                cursor={{ fill: "hsl(var(--muted))" }}
                 contentStyle={{
-                  backgroundColor: "#09090b",
-                  borderColor: "#27272a",
+                  backgroundColor: "hsl(var(--popover))",
+                  borderColor: "hsl(var(--border))",
                   borderRadius: "8px",
-                  color: "#fff",
+                  color: "hsl(var(--popover-foreground))",
                 }}
               />
               <Bar

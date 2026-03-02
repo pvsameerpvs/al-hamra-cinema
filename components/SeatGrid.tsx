@@ -113,7 +113,7 @@ export function SeatGrid() {
 
           return (
             <div key={row} className="flex gap-2 items-center">
-              <span className="w-6 text-center font-bold text-gray-400">
+              <span className="w-6 text-center font-bold text-muted-foreground">
                 {row}
               </span>
               <div className="flex gap-1 flex-wrap justify-center">
@@ -130,7 +130,7 @@ export function SeatGrid() {
                   </Button>
                 ))}
               </div>
-              <span className="w-6 text-center font-bold text-gray-400">
+              <span className="w-6 text-center font-bold text-muted-foreground">
                 {row}
               </span>
             </div>
@@ -141,31 +141,31 @@ export function SeatGrid() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 md:p-6 bg-zinc-950 rounded-xl shadow-2xl border border-zinc-900">
+    <div className="w-full max-w-6xl mx-auto p-4 md:p-6 bg-card rounded-xl shadow-xl border border-border">
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-        <h2 className="text-2xl font-bold text-zinc-100 flex items-center gap-3">
-          <span className="bg-primary/20 p-2 rounded-lg">🎭</span>
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
+          <span className="bg-accent text-accent-foreground p-2 rounded-lg">🎭</span>
           Select Your Seat
         </h2>
-        <div className="flex gap-4 p-3 bg-zinc-900 rounded-lg">
+        <div className="flex gap-4 p-3 bg-muted/50 rounded-lg border border-border">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-green-500 shrink-0"></div>
-            <span className="text-sm text-zinc-300">Available</span>
+            <span className="text-sm text-muted-foreground">Available</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-yellow-500 shrink-0"></div>
-            <span className="text-sm text-zinc-300">Reserved</span>
+            <span className="text-sm text-muted-foreground">Reserved</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-red-500 shrink-0"></div>
-            <span className="text-sm text-zinc-300">Booked</span>
+            <span className="text-sm text-muted-foreground">Booked</span>
           </div>
         </div>
       </div>
 
       <div className="mb-12">
         <div className="text-center mb-6">
-          <Badge variant="outline" className="px-4 py-1.5 text-base text-zinc-300 border-zinc-700 bg-zinc-900/50">
+          <Badge variant="outline" className="px-4 py-1.5 text-base border-border bg-muted/30">
             Balcony (35 AED)
           </Badge>
         </div>
@@ -177,7 +177,7 @@ export function SeatGrid() {
       <div className="relative mb-16">
         <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent rounded-3xl -z-10 blur-xl"></div>
         <div className="text-center mb-6">
-          <Badge variant="outline" className="px-4 py-1.5 text-base text-zinc-300 border-zinc-700 bg-zinc-900/50">
+          <Badge variant="outline" className="px-4 py-1.5 text-base border-border bg-muted/30">
             Orchestra (30 AED)
           </Badge>
         </div>
@@ -186,9 +186,9 @@ export function SeatGrid() {
         </div>
       </div>
 
-      <div className="w-full h-24 mt-16 bg-gradient-to-t from-zinc-800 to-transparent flex items-end justify-center rounded-b-[50%] opacity-50 relative overflow-hidden">
-        <div className="absolute top-0 w-[80%] h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent blur-[1px]"></div>
-        <span className="text-zinc-400 font-semibold tracking-[1em] mb-4 text-sm mix-blend-screen uppercase">Screen</span>
+      <div className="w-full h-24 mt-16 bg-gradient-to-t from-muted/70 to-transparent flex items-end justify-center rounded-b-[50%] opacity-70 relative overflow-hidden">
+        <div className="absolute top-0 w-[80%] h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent blur-[1px]" />
+        <span className="text-muted-foreground/80 font-semibold tracking-[1em] mb-4 text-sm uppercase">Screen</span>
       </div>
 
       {selectedSeat && (
