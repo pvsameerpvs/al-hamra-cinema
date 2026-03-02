@@ -18,7 +18,7 @@ export async function fetchAllSeats(): Promise<Seat[]> {
           row,
           seat_number: i,
           status: Math.random() > 0.8 ? "Booked" : "Available", // ~20% booked initially
-          price: 15,
+          price: 30,
         });
       }
     });
