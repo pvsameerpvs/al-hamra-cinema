@@ -13,12 +13,13 @@ import {
   CreditCard,
 } from "lucide-react";
 import Link from "next/link";
-import { Booking } from "@/lib/types";
+import { Booking, Show } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/Sidebar";
 
 export default function BookingsHistoryPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -27,8 +28,9 @@ export default function BookingsHistoryPage() {
     try {
       const res = await fetch("/api/bookings", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load bookings");
-      const data: Booking[] = await res.json();
-      setBookings(data);
+      const data = await res.json();
+      setBookings(data.bookings || []);
+      setShows(data.shows || []);
     } catch (err: unknown) {
       toast({
         title: "Error",
@@ -109,6 +111,9 @@ export default function BookingsHistoryPage() {
                     
                     const timeMatch = booking.seatIds.match(/\[(.*?)\]/);
                     const showTime = timeMatch ? timeMatch[1] : "N/A";
+                    
+                    const movieMatch = shows.find(s => s.showTime === showTime);
+                    const movieTitle = movieMatch ? movieMatch.movieTitle : "Unknown Movie";
 
                     return (
                       <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
@@ -130,15 +135,22 @@ export default function BookingsHistoryPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mb-0.5">
                               <span className="inline-flex items-center justify-center px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-xs font-bold border border-indigo-100">
                                 {ticketCount} {ticketCount === 1 ? 'Ticket' : 'Tickets'}
                               </span>
-                              <span className="text-slate-600 font-medium">for {showTime}</span>
                             </div>
-                            <div className="flex items-start gap-2 text-slate-500 text-xs">
-                              <Ticket className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                              <span className="max-w-[180px] leading-tight break-words">{cleanIds.join(", ")}</span>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-800 text-sm">{movieTitle}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-500 text-xs">
+                                <span className="text-slate-600 font-medium">Time: {showTime}</span>
+                              </div>
+                              <div className="flex items-start gap-2 text-slate-500 text-xs mt-1">
+                                <Ticket className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                <span className="max-w-[180px] leading-tight break-words">{cleanIds.join(", ")}</span>
+                              </div>
                             </div>
                           </div>
                         </td>
