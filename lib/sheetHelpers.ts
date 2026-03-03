@@ -1,5 +1,5 @@
 import { sheets, SPREADSHEET_ID } from "./google";
-import { Seat, SeatStatus } from "./types";
+import { Seat, SeatStatus, Show } from "./types";
 
 interface MockBooking {
   seatId: string;
@@ -7,8 +7,17 @@ interface MockBooking {
   date: string;
 }
 
-const globalForBookings = global as unknown as { mockBookings: MockBooking[] };
+const globalForBookings = global as unknown as { mockBookings: MockBooking[], mockShows: Show[] };
 if (!globalForBookings.mockBookings) globalForBookings.mockBookings = [];
+if (!globalForBookings.mockShows) {
+  globalForBookings.mockShows = [
+    { id: "1", movieTitle: "Dune: Part Two", showTime: "10:00 AM", isActive: true },
+    { id: "2", movieTitle: "Spider-Man", showTime: "01:00 PM", isActive: true },
+    { id: "3", movieTitle: "Avatar 3", showTime: "04:00 PM", isActive: true },
+    { id: "4", movieTitle: "Inception", showTime: "07:00 PM", isActive: true },
+    { id: "5", movieTitle: "Interstellar", showTime: "10:00 PM", isActive: true },
+  ];
+}
 
 export async function fetchAllSeats(time?: string): Promise<Seat[]> {
   const today = new Date().toISOString().split("T")[0];
@@ -295,4 +304,112 @@ export async function getDashboardStats() {
       chartData: [],
     };
   }
+}
+
+// -------------------------------------------------------------
+// Shows Management
+// -------------------------------------------------------------
+
+export async function fetchAllShows(): Promise<Show[]> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    return globalForBookings.mockShows;
+  }
+
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "shows!A2:D",
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return rows.map((row) => ({
+      id: row[0],
+      movieTitle: row[1],
+      showTime: row[2],
+      isActive: row[3] === "TRUE",
+    }));
+  } catch (error) {
+    console.error("Error fetching shows:", error);
+    return [];
+  }
+}
+
+export async function createShow(show: Show) {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    globalForBookings.mockShows.push(show);
+    return;
+  }
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "shows!A:D",
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [[show.id, show.movieTitle, show.showTime, show.isActive ? "TRUE" : "FALSE"]],
+    },
+  });
+}
+
+export async function updateShow(showId: string, updatedShow: Partial<Show>) {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    const index = globalForBookings.mockShows.findIndex((s) => s.id === showId);
+    if (index !== -1) {
+      globalForBookings.mockShows[index] = { ...globalForBookings.mockShows[index], ...updatedShow };
+    }
+    return;
+  }
+
+  // Real sheets update (fetching all, finding row, updating row)
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "shows!A:A", 
+  });
+  
+  const ids = response.data.values?.map((r) => r[0]) || [];
+  const rowIndex = ids.indexOf(showId);
+  
+  if (rowIndex === -1) throw new Error(`Show ${showId} not found`);
+  const exactRow = rowIndex + 1;
+
+  // We have to figure out exactly what to update. Simplest is overwriting A:D for that row
+  // We'll fetch the current row first if it's partial, or just trust the admin UI passes complete data
+  const currentShowRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `shows!A${exactRow}:D${exactRow}`,
+  });
+  const currentRow = currentShowRes.data.values?.[0];
+  if (!currentRow) throw new Error(`Row data for ${showId} not found`);
+
+  const mergedShow = {
+    id: showId,
+    movieTitle: updatedShow.movieTitle !== undefined ? updatedShow.movieTitle : currentRow[1],
+    showTime: updatedShow.showTime !== undefined ? updatedShow.showTime : currentRow[2],
+    isActive: updatedShow.isActive !== undefined ? (updatedShow.isActive ? "TRUE" : "FALSE") : currentRow[3],
+  };
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `shows!A${exactRow}:D${exactRow}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [[mergedShow.id, mergedShow.movieTitle, mergedShow.showTime, mergedShow.isActive]],
+    },
+  });
+}
+
+export async function deleteShow(showId: string) {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    globalForBookings.mockShows = globalForBookings.mockShows.filter((s) => s.id !== showId);
+    return;
+  }
+
+  // It's safer to just set isActive to false or clear the row rather than hard deleting the row natively via API
+  await updateShow(showId, { isActive: false });
 }

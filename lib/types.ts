@@ -25,3 +25,10 @@ export interface RevenueLog {
   month: string;
   date: string;
 }
+
+export interface Show {
+  id: string;
+  movieTitle: string;
+  showTime: string;
+  isActive: boolean;
+}

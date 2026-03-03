@@ -83,6 +83,12 @@ export default function DashboardPage() {
               <span className="hidden sm:inline">Refresh Data</span>
             </button>
             <Link
+              href="/dashboard/shows"
+              className="px-4 py-2 border border-border bg-card hover:bg-muted text-foreground rounded-md text-sm font-semibold transition-colors flex items-center gap-2"
+            >
+              🎬 Manage Shows
+            </Link>
+            <Link
               href="/booking"
               className="px-6 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold transition-transform hover:scale-105 shadow-lg shadow-primary/20 flex items-center gap-2"
             >
