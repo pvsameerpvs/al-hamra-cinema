@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BookingDialog } from "./BookingDialog";
 import { Loader2 } from "lucide-react";
 
-export function SeatGrid() {
+export function SeatGrid({ showTime }: { showTime?: string }) {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
@@ -18,7 +18,8 @@ export function SeatGrid() {
   const fetchSeats = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true);
     try {
-      const res = await fetch("/api/seats");
+      const url = showTime ? `/api/seats?time=${encodeURIComponent(showTime)}` : "/api/seats";
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch");
       const data: Seat[] = await res.json();
       setSeats(data);
@@ -241,6 +242,7 @@ export function SeatGrid() {
           onClose={() => setIsDialogOpen(false)}
           seats={selectedSeats}
           onBookingComplete={handleBookingComplete}
+          showTime={showTime || ""}
         />
       )}
     </div>

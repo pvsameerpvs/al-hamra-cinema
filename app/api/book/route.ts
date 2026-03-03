@@ -24,10 +24,7 @@ export async function POST(req: Request) {
     });
     const date = new Date().toISOString().split("T")[0];
 
-    // 1. Update all seat statuses to 'Booked' sequentially to avoid rate limits
-    for (const id of seatIds) {
-      await updateSeatStatus(id, "Booked");
-    }
+    // 1. (Removed global layout update) Seat statuses are now derived dynamically per showTime based on Bookings sheet!
 
     // 2. Insert booking record
     await createBookingRecord(

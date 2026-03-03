@@ -20,6 +20,7 @@ interface BookingDialogProps {
   onClose: () => void;
   seats: Seat[];
   onBookingComplete: (seatIds: string[]) => void;
+  showTime: string;
 }
 
 export function BookingDialog({
@@ -27,11 +28,11 @@ export function BookingDialog({
   onClose,
   seats,
   onBookingComplete,
+  showTime,
 }: BookingDialogProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [showTime, setShowTime] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -107,24 +108,7 @@ export function BookingDialog({
         <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-1">
           <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-700 dark:text-yellow-500 p-3 rounded-md text-xs text-center font-medium">
             ⚠️ Bookings are only valid for today:<br />
-            <strong>{todayDate}</strong>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-medium">Select Show Time <span className="text-red-500">*</span></label>
-            <div className="flex flex-wrap gap-2">
-              {showTimesList.map((time) => (
-                <Button
-                  key={time}
-                  type="button"
-                  variant={showTime === time ? "default" : "outline"}
-                  onClick={() => setShowTime(time)}
-                  className={`flex-1 min-w-[30%] h-9 text-xs ${showTime === time ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}
-                >
-                  {time}
-                </Button>
-              ))}
-            </div>
+            <strong>{todayDate} - {showTime}</strong>
           </div>
 
           <div className="grid gap-2">

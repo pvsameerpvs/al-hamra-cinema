@@ -1,9 +1,17 @@
-import { SeatGrid } from "@/components/SeatGrid";
 import { HomeHeader } from "@/components/home/HomeHeader";
-import { MoveLeft } from "lucide-react";
+import { MoveLeft, Clock } from "lucide-react";
 import Link from "next/link";
 
-export default function BookingPage() {
+export default function BookingSelectionPage() {
+  const showTimesList = ["10:00 AM", "01:00 PM", "04:00 PM", "07:00 PM", "10:00 PM"];
+
+  const todayDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <main className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground">
       <HomeHeader />
@@ -18,14 +26,29 @@ export default function BookingPage() {
             Back to Dashboard
           </Link>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Counter Booking</h1>
-      </section>
+        
+        <div className="max-w-3xl mx-auto text-center mb-16">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Select a Show Time</h1>
+          <p className="text-muted-foreground text-lg md:text-xl">
+            Bookings are currently open only for today: <strong className="text-primary">{todayDate}</strong>
+          </p>
+        </div>
 
-      <section
-        id="seats"
-        className="mx-auto max-w-7xl px-4 pb-20 md:px-8"
-      >
-        <SeatGrid />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {showTimesList.map((time) => {
+            const slug = time.replace(/\s+/g, '-');
+            return (
+              <Link
+                key={time}
+                href={`/booking/${slug}`}
+                className="group flex flex-col items-center justify-center p-10 border border-border bg-card hover:border-primary hover:bg-primary/5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <Clock className="w-10 h-10 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="text-2xl font-bold">{time}</span>
+              </Link>
+            )
+          })}
+        </div>
       </section>
     </main>
   );

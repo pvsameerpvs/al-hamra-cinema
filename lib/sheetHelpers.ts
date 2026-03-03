@@ -1,7 +1,17 @@
 import { sheets, SPREADSHEET_ID } from "./google";
 import { Seat, SeatStatus } from "./types";
 
-export async function fetchAllSeats(): Promise<Seat[]> {
+interface MockBooking {
+  seatId: string;
+  time: string;
+  date: string;
+}
+
+const globalForBookings = global as unknown as { mockBookings: MockBooking[] };
+if (!globalForBookings.mockBookings) globalForBookings.mockBookings = [];
+
+export async function fetchAllSeats(time?: string): Promise<Seat[]> {
+  const today = new Date().toISOString().split("T")[0];
   // Fallback to mock data if the private key is not configured or using the default dummy value
   const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
   if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
@@ -17,7 +27,7 @@ export async function fetchAllSeats(): Promise<Seat[]> {
           section: "Orchestra",
           row,
           seat_number: i,
-          status: Math.random() > 0.8 ? "Booked" : "Available", // ~20% booked initially
+          status: "Available", // All seats start available layout-wise
           price: 30,
         });
       }
@@ -40,11 +50,23 @@ export async function fetchAllSeats(): Promise<Seat[]> {
           section: "Balcony",
           row,
           seat_number: i,
-          status: Math.random() > 0.8 ? "Booked" : "Available",
+          status: "Available",
           price: 35,
         });
       }
     });
+
+    // Derive bookings for the current time
+    if (time) {
+      mockSeats.forEach((seat) => {
+        const isBooked = globalForBookings.mockBookings.some(
+          (b) => b.seatId === seat.seat_id && b.time === time && b.date === today
+        );
+        if (isBooked) {
+          seat.status = "Booked";
+        }
+      });
+    }
 
     return mockSeats;
   }
@@ -58,12 +80,36 @@ export async function fetchAllSeats(): Promise<Seat[]> {
     const rows = response.data.values;
     if (!rows || rows.length === 0) return [];
 
+    let bookedSeats = new Set<string>();
+
+    if (time) {
+      try {
+        const bookingsRes = await sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: "bookings!A:H",
+        });
+        const bookingRows = bookingsRes.data.values || [];
+        for (const r of bookingRows) {
+          const seatIdsCol = r[1] || "";
+          const createdAtStr = r[7] || "";
+          const rowDate = createdAtStr.split("T")[0];
+          
+          if (rowDate === today && seatIdsCol.startsWith(`[${time}]`)) {
+            const cleanIds = seatIdsCol.replace(`[${time}] `, "").split(", ");
+            cleanIds.forEach((s: string) => bookedSeats.add(s.trim()));
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch bookings for dynamic seat status calculation:", e);
+      }
+    }
+
     return rows.map((row) => ({
       seat_id: row[0],
       section: row[1] as "Balcony" | "Orchestra",
       row: row[2],
       seat_number: Number(row[3]),
-      status: row[4] as SeatStatus,
+      status: bookedSeats.has(row[0]) ? "Booked" : "Available",
       price: Number(row[5]),
     }));
   } catch (error) {
@@ -118,7 +164,14 @@ export async function createBookingRecord(
 ) {
   const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
   if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
-    console.warn(`Mock: createBookingRecord(${bookingId}) bypassed.`);
+    console.warn(`Mock: createBookingRecord(${bookingId}, ${seatIds}) passed to memory.`);
+    const today = new Date().toISOString().split("T")[0];
+    const timeMatch = seatIds.match(/\[(.*?)\]/);
+    const time = timeMatch ? timeMatch[1] : "";
+    const cleanly = seatIds.replace(/\[.*?\]\s*/, "").split(", ");
+    cleanly.forEach((s) => {
+      globalForBookings.mockBookings.push({ seatId: s.trim(), time, date: today });
+    });
     return;
   }
 
