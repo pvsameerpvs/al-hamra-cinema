@@ -97,19 +97,19 @@ export function BookingDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Complete Your Booking</DialogTitle>
-          <DialogDescription>
-            You are booking <strong>{seats.length}</strong> seat(s):{" "}
-            <strong>{seats.map(s => s.seat_id).join(", ")}</strong>.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-1">
-          <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-700 dark:text-yellow-500 p-3 rounded-md text-xs text-center font-medium">
-            ⚠️ Bookings are only valid for today:<br />
-            <strong>{todayDate} - {showTime}</strong>
-          </div>
+        <DialogContent className="sm:max-w-[425px] rounded-2xl bg-white border-slate-100 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-800">Complete Your Booking</DialogTitle>
+            <DialogDescription className="text-slate-500">
+              You are booking <strong className="text-indigo-600">{seats.length}</strong> seat(s):{" "}
+              <strong className="text-slate-700">{seats.map(s => s.seat_id).join(", ")}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-5 py-4 max-h-[70vh] overflow-y-auto px-1">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs text-center font-medium shadow-sm">
+              ⚠️ Bookings are only valid for today:<br />
+              <strong className="text-amber-900">{todayDate} - {showTime}</strong>
+            </div>
 
           <div className="grid gap-2">
             <label htmlFor="name" className="text-sm font-medium">
@@ -147,22 +147,22 @@ export function BookingDialog({
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+            </div>
+            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex justify-between items-center mt-2 shadow-sm">
+              <span className="text-sm font-medium text-indigo-800">Total Amount:</span>
+              <span className="font-bold text-xl text-indigo-600">{totalAmount} AED</span>
+            </div>
           </div>
-          <div className="bg-muted p-3 rounded-lg flex justify-between items-center mt-2">
-            <span className="text-sm">Total Amount:</span>
-            <span className="font-bold text-lg">{totalAmount} AED</span>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button onClick={handleBooking} disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm Booking
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={onClose} disabled={loading} className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
+              Cancel
+            </Button>
+            <Button onClick={handleBooking} disabled={loading} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition-all">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
     </Dialog>
   );
 }

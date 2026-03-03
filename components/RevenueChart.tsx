@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  TooltipContentProps,
 } from "recharts";
 import { TrendingUp } from "lucide-react";
 
@@ -16,7 +17,7 @@ interface ChartData {
   revenue: number;
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white border border-slate-100 rounded-xl shadow-lg px-4 py-3 text-sm">
@@ -101,7 +102,7 @@ export function RevenueChart({ data }: { data: ChartData[] }) {
               tickFormatter={(v) => `${v.toLocaleString()}`}
             />
             <Tooltip
-              content={<CustomTooltip />}
+              content={CustomTooltip}
               cursor={{ fill: "#f1f5f9", radius: 8 }}
             />
             <Bar

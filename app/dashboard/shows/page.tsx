@@ -18,10 +18,13 @@ import { Show } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Sidebar } from "@/components/Sidebar";
+
+let cachedShows: Show[] | null = null;
 
 export default function ManageShowsPage() {
-  const [shows, setShows] = useState<Show[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [shows, setShows] = useState<Show[]>(cachedShows || []);
+  const [loading, setLoading] = useState(!cachedShows);
 
   // Create / Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -34,11 +37,12 @@ export default function ManageShowsPage() {
   const { toast } = useToast();
 
   const fetchShows = async () => {
-    setLoading(true);
+    if (!cachedShows) setLoading(true);
     try {
       const res = await fetch("/api/shows", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load shows");
       const data: Show[] = await res.json();
+      cachedShows = data;
       setShows(data);
     } catch (err: unknown) {
       toast({
@@ -132,11 +136,12 @@ export default function ManageShowsPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <Sidebar />
+      <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Back */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 mb-8 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl text-sm font-medium transition-colors w-fit shadow-sm mb-8"
         >
           <MoveLeft className="w-4 h-4" />
           Back to Dashboard
@@ -145,8 +150,8 @@ export default function ManageShowsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
-              <PlaySquare className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shadow-sm">
+              <PlaySquare className="w-5 h-5 text-indigo-500" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-800">Manage Shows</h1>
@@ -159,7 +164,7 @@ export default function ManageShowsPage() {
           {!isCreating && !editingId && (
             <button
               onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition-all hover:scale-[1.02]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition-all hover:scale-[1.02]"
             >
               <Plus className="w-4 h-4" />
               New Show
@@ -183,7 +188,7 @@ export default function ManageShowsPage() {
                   placeholder="e.g. Dune: Part Two"
                   value={movieTitle}
                   onChange={(e) => setMovieTitle(e.target.value)}
-                  className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-200"
+                  className="rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50/50 hover:bg-white transition-colors h-11"
                 />
               </div>
               <div>
@@ -214,7 +219,7 @@ export default function ManageShowsPage() {
                     hours = hours ? hours : 12;
                     setShowTime(`${hours.toString().padStart(2, "0")}:${m} ${ampm}`);
                   }}
-                  className="rounded-xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-200"
+                  className="rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50/50 hover:bg-white transition-colors h-11"
                 />
               </div>
             </div>
@@ -236,13 +241,13 @@ export default function ManageShowsPage() {
               <button
                 onClick={handleCreateOrUpdate}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-200 transition-colors disabled:opacity-60"
+                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-200 transition-colors disabled:opacity-60"
               >
                 {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 <Check className="w-4 h-4" />
                 Save
               </button>
-              <Button variant="outline" onClick={resetForm} disabled={actionLoading} className="rounded-xl">
+              <Button variant="outline" onClick={resetForm} disabled={actionLoading} className="rounded-xl px-6 py-2.5 h-auto border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold shadow-sm">
                 Cancel
               </Button>
             </div>
@@ -334,7 +339,7 @@ export default function ManageShowsPage() {
               <p className="text-slate-400 text-sm mb-5">Create your first screening time to get started.</p>
               <button
                 onClick={() => setIsCreating(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-200"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200"
               >
                 <Plus className="w-4 h-4" />
                 Create First Show
