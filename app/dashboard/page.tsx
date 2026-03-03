@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DashboardCards } from "@/components/DashboardCards";
 import { RevenueChart } from "@/components/RevenueChart";
 import { Sidebar } from "@/components/Sidebar";
@@ -8,12 +9,15 @@ import {
   Loader2,
   Ticket,
   RefreshCw,
-  PlaySquare,
   LayoutDashboard,
   Bell,
   ChevronRight,
+  Filter,
+  Calendar,
+  PlaySquare,
 } from "lucide-react";
 import Link from "next/link";
+import { Show } from "@/lib/types";
 
 interface DashboardStats {
   totalTicketsSold: number;
@@ -26,7 +30,23 @@ interface DashboardStats {
 let cachedStats: DashboardStats | null = null;
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [stats, setStats] = useState<DashboardStats | null>(cachedStats);
+  const [shows, setShows] = useState<Show[]>([]);
+  const [selectedMovie, setSelectedMovie] = useState<string>(searchParams.get("movieId") || "all");
+  const [selectedMonth, setSelectedMonth] = useState<string>(searchParams.get("filterMonth") || "");
+  const [selectedDate, setSelectedDate] = useState<string>(searchParams.get("filterDate") || "");
   const [loading, setLoading] = useState(!cachedStats);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -35,11 +55,24 @@ export default function DashboardPage() {
     if (isRefresh) setRefreshing(true);
     else if (!cachedStats) setLoading(true);
     try {
-      const res = await fetch("/api/dashboard", { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to load stats");
-      const data: DashboardStats = await res.json();
+      const queryParams = new URLSearchParams();
+      if (selectedMovie !== "all") queryParams.set("movieId", selectedMovie);
+      if (selectedMonth) queryParams.set("filterMonth", selectedMonth);
+      if (selectedDate) queryParams.set("filterDate", selectedDate);
+      
+      const [resStats, resShows] = await Promise.all([
+        fetch(`/api/dashboard?${queryParams.toString()}`, { cache: "no-store" }),
+        fetch("/api/shows", { cache: "no-store" })
+      ]);
+      
+      if (!resStats.ok) throw new Error("Failed to load stats");
+      
+      const data: DashboardStats = await resStats.json();
+      const showsData: Show[] = resShows.ok ? await resShows.json() : [];
+      
       cachedStats = data;
       setStats(data);
+      setShows(showsData.filter(s => s.isActive));
     } catch (err: unknown) {
       if (!cachedStats) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -53,7 +86,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+    
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedMovie && selectedMovie !== "all") params.set("movieId", selectedMovie);
+    else params.delete("movieId");
+    
+    if (selectedMonth) params.set("filterMonth", selectedMonth);
+    else params.delete("filterMonth");
+    
+    if (selectedDate) params.set("filterDate", selectedDate);
+    else params.delete("filterDate");
+    
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMovie, selectedMonth, selectedDate]);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", {
@@ -168,10 +215,58 @@ export default function DashboardPage() {
 
           {/* Stats Cards */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                 Overview
               </h3>
+              
+              {/* Server-Side Filters */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Movie Filter */}
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <PlaySquare className="w-4 h-4 text-slate-400" />
+                  <select 
+                    value={selectedMovie}
+                    onChange={(e) => setSelectedMovie(e.target.value)}
+                    className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none"
+                  >
+                    <option value="all">All Movies</option>
+                    {shows.map(show => (
+                      <option key={show.id} value={show.id}>
+                        {show.movieTitle} ({show.showTime})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Month Filter */}
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <input 
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => {
+                       setSelectedMonth(e.target.value);
+                       if (e.target.value) setSelectedDate(""); 
+                    }}
+                    className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none w-32"
+                  />
+                </div>
+
+                {/* Date Filter */}
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <Filter className="w-4 h-4 text-slate-400" />
+                  <input 
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                       setSelectedDate(e.target.value);
+                       if (e.target.value) setSelectedMonth("");
+                    }}
+                    className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none w-32"
+                  />
+                </div>
+              </div>
             </div>
             <DashboardCards stats={stats} />
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   MoveLeft,
   Loader2,
@@ -11,6 +12,10 @@ import {
   Mail,
   CalendarDays,
   CreditCard,
+  ChevronRight,
+  Filter,
+  Calendar,
+  PlaySquare,
 } from "lucide-react";
 import Link from "next/link";
 import { Booking, Show } from "@/lib/types";
@@ -18,15 +23,35 @@ import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/Sidebar";
 
 export default function BookingsHistoryPage() {
+  return (
+    <Suspense fallback={<div className="p-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>}>
+      <BookingsHistoryContent />
+    </Suspense>
+  );
+}
+
+function BookingsHistoryContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
+  const [selectedMovie, setSelectedMovie] = useState<string>(searchParams.get("movieId") || "all");
+  const [selectedMonth, setSelectedMonth] = useState<string>(searchParams.get("filterMonth") || "");
+  const [selectedDate, setSelectedDate] = useState<string>(searchParams.get("filterDate") || "");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/bookings", { cache: "no-store" });
+      const queryParams = new URLSearchParams();
+      if (selectedMovie !== "all") queryParams.set("movieId", selectedMovie);
+      if (selectedMonth) queryParams.set("filterMonth", selectedMonth);
+      if (selectedDate) queryParams.set("filterDate", selectedDate);
+
+      const res = await fetch(`/api/bookings?${queryParams.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load bookings");
       const data = await res.json();
       setBookings(data.bookings || []);
@@ -44,8 +69,21 @@ export default function BookingsHistoryPage() {
 
   useEffect(() => {
     fetchBookings();
+    
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedMovie && selectedMovie !== "all") params.set("movieId", selectedMovie);
+    else params.delete("movieId");
+    
+    if (selectedMonth) params.set("filterMonth", selectedMonth);
+    else params.delete("filterMonth");
+    
+    if (selectedDate) params.set("filterDate", selectedDate);
+    else params.delete("filterDate");
+    
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedMovie, selectedMonth, selectedDate]);
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
@@ -86,6 +124,53 @@ export default function BookingsHistoryPage() {
                 </span>
               )}
             </h3>
+            {/* Server-Side Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Movie Filter */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                <PlaySquare className="w-4 h-4 text-slate-400" />
+                <select 
+                  value={selectedMovie}
+                  onChange={(e) => setSelectedMovie(e.target.value)}
+                  className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none"
+                >
+                  <option value="all">All Movies</option>
+                  {shows.map(show => (
+                    <option key={show.id} value={show.id}>
+                      {show.movieTitle} ({show.showTime})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month Filter */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                <input 
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                     setSelectedMonth(e.target.value);
+                     if (e.target.value) setSelectedDate(""); 
+                  }}
+                  className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none w-32"
+                />
+              </div>
+
+              {/* Date Filter */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <input 
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => {
+                     setSelectedDate(e.target.value);
+                     if (e.target.value) setSelectedMonth("");
+                  }}
+                  className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none w-32"
+                />
+              </div>
+            </div>
           </div>
 
           {loading ? (
