@@ -16,6 +16,7 @@ import {
   Filter,
   Calendar,
   PlaySquare,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { Booking, Show } from "@/lib/types";
@@ -170,6 +171,21 @@ function BookingsHistoryContent() {
                   className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none w-32"
                 />
               </div>
+
+              {/* Reset Filters */}
+              {(selectedMovie !== "all" || selectedMonth !== "" || selectedDate !== "") && (
+                <button
+                  onClick={() => {
+                    setSelectedMovie("all");
+                    setSelectedMonth("");
+                    setSelectedDate("");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors border border-transparent hover:border-red-100 shadow-sm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Reset
+                </button>
+              )}
             </div>
           </div>
 
