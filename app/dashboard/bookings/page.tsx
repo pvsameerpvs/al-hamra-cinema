@@ -6,22 +6,18 @@ import {
   MoveLeft,
   Loader2,
   History,
-  Ticket,
-  User,
-  Phone,
-  Mail,
-  CalendarDays,
-  CreditCard,
-  ChevronRight,
   Filter,
   Calendar,
   PlaySquare,
   X,
+  Search,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import { Booking, Show } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/Sidebar";
+import { BookingsTable } from "@/components/BookingsTable";
 
 export default function BookingsHistoryPage() {
   return (
@@ -41,7 +37,54 @@ function BookingsHistoryContent() {
   const [selectedMovie, setSelectedMovie] = useState<string>(searchParams.get("movieId") || "all");
   const [selectedMonth, setSelectedMonth] = useState<string>(searchParams.get("filterMonth") || "");
   const [selectedDate, setSelectedDate] = useState<string>(searchParams.get("filterDate") || "");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const filteredBookings = bookings.filter(b => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (b.customerName || "").toLowerCase().includes(q) ||
+      (b.phone || "").toLowerCase().includes(q) ||
+      (b.email || "").toLowerCase().includes(q)
+    );
+  });
+
+  const handleExportCSV = () => {
+    if (filteredBookings.length === 0) return;
+
+    const headers = ["Customer Name", "Phone", "Email", "Movie Title", "Show Time", "Seats", "Total Amount (AED)", "Payment Status", "Booking Date"];
+    
+    const csvRows = filteredBookings.map(b => {
+      const cleanIds = (b.seatIds || "").replace(/\[.*?\]\s*/, "").split(", ").filter(s => s.trim() !== "");
+      const timeMatch = (b.seatIds || "").match(/\[(.*?)\]/);
+      const showTime = timeMatch ? timeMatch[1] : "N/A";
+      const movieMatch = shows.find(s => s.showTime === showTime);
+      const movieTitle = movieMatch ? movieMatch.movieTitle : "Unknown Movie";
+
+      return [
+        `"${b.customerName || ""}"`,
+        `"${b.phone || ""}"`,
+        `"${b.email || ""}"`,
+        `"${movieTitle}"`,
+        `"${showTime}"`,
+        `"${cleanIds.join(", ")}"`,
+        b.amount || 0,
+        `"${b.paymentStatus || ""}"`,
+        `"${b.createdAt || ""}"`
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   const { toast } = useToast();
 
   const fetchBookings = async () => {
@@ -116,17 +159,41 @@ function BookingsHistoryContent() {
 
         {/* Bookings Table */}
         <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-700 text-sm">
-              All Transactions
-              {!loading && (
-                <span className="ml-2 text-xs text-slate-400 font-normal">
-                  ({bookings.length} total)
-                </span>
-              )}
-            </h3>
-            {/* Server-Side Filters */}
+          <div className="px-6 py-4 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <h3 className="font-semibold text-slate-700 text-sm whitespace-nowrap">
+                All Transactions
+                {!loading && (
+                  <span className="ml-2 text-xs text-slate-400 font-normal">
+                    ({filteredBookings.length} total)
+                  </span>
+                )}
+              </h3>
+              
+              {/* Search Bar */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm min-w-[200px] sm:min-w-[250px] w-full sm:w-auto">
+                <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                <input 
+                  type="text"
+                  placeholder="Search customer, phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 outline-none w-full placeholder:text-slate-400 placeholder:font-normal"
+                />
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
+              {/* Export Button */}
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 rounded-xl px-3 py-1.5 shadow-sm text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={filteredBookings.length === 0}
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </button>
+
               {/* Movie Filter */}
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
                 <PlaySquare className="w-4 h-4 text-slate-400" />
@@ -189,112 +256,7 @@ function BookingsHistoryContent() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="p-16 flex flex-col items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-4" />
-              <p className="text-slate-400 text-sm">Loading booking history…</p>
-            </div>
-          ) : bookings.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="text-xs text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-slate-100">
-                    <th className="px-6 py-3.5 font-semibold">Customer</th>
-                    <th className="px-6 py-3.5 font-semibold">Booking Details</th>
-                    <th className="px-6 py-3.5 font-semibold">Payment</th>
-                    <th className="px-6 py-3.5 font-semibold">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {bookings.map((booking) => {
-                    const cleanIds = booking.seatIds.replace(/\[.*?\]\s*/, "").split(", ").filter(s => s.trim() !== "");
-                    const ticketCount = cleanIds.length;
-                    
-                    const timeMatch = booking.seatIds.match(/\[(.*?)\]/);
-                    const showTime = timeMatch ? timeMatch[1] : "N/A";
-                    
-                    const movieMatch = shows.find(s => s.showTime === showTime);
-                    const movieTitle = movieMatch ? movieMatch.movieTitle : "Unknown Movie";
-
-                    return (
-                      <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-indigo-400" />
-                              <span className="font-bold text-slate-800 text-base">{booking.customerName}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-500 text-xs mt-1">
-                              <Phone className="w-3.5 h-3.5 text-slate-400" />
-                              {booking.phone}
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-500 text-xs">
-                              <Mail className="w-3.5 h-3.5 text-slate-400" />
-                              {booking.email}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="inline-flex items-center justify-center px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-xs font-bold border border-indigo-100">
-                                {ticketCount} {ticketCount === 1 ? 'Ticket' : 'Tickets'}
-                              </span>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-800 text-sm">{movieTitle}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-slate-500 text-xs">
-                                <span className="text-slate-600 font-medium">Time: {showTime}</span>
-                              </div>
-                              <div className="flex items-start gap-2 text-slate-500 text-xs mt-1">
-                                <Ticket className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                                <span className="max-w-[180px] leading-tight break-words">{cleanIds.join(", ")}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2">
-                              <CreditCard className="w-4 h-4 text-emerald-500" />
-                              <span className="font-bold text-slate-800">{booking.amount} AED</span>
-                            </div>
-                            <div>
-                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wide bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                {booking.paymentStatus}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600">
-                          <div className="flex items-center gap-2">
-                            <CalendarDays className="w-4 h-4 text-slate-400" />
-                            {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            }) : "Unknown Date"}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
-                <History className="w-7 h-7 text-slate-300" />
-              </div>
-              <p className="text-slate-500 font-medium mb-1">No bookings yet</p>
-              <p className="text-slate-400 text-sm mb-5">Transactions and history will appear here once purchases are made.</p>
-            </div>
-          )}
+          <BookingsTable bookings={filteredBookings} shows={shows} loading={loading} />
         </div>
       </div>
     </div>
