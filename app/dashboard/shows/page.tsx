@@ -159,7 +159,36 @@ export default function ManageShowsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Show Time *</label>
-                <Input placeholder="e.g. 10:00 AM" value={showTime} onChange={(e) => setShowTime(e.target.value)} />
+                <Input 
+                  type="time" 
+                  value={(() => {
+                    if (!showTime) return "";
+                    const match = showTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                    if (!match) return showTime;
+                    let [, h, m, ampm] = match;
+                    let hours = parseInt(h, 10);
+                    if (ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
+                    if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+                    return `${hours.toString().padStart(2, '0')}:${m}`;
+                  })()} 
+                  onChange={(e) => {
+                    const time24 = e.target.value;
+                    if (!time24) {
+                      setShowTime("");
+                      return;
+                    }
+                    if (!time24.includes(":")) {
+                      setShowTime(time24);
+                      return;
+                    }
+                    const [h, m] = time24.split(":");
+                    let hours = parseInt(h, 10);
+                    const ampm = hours >= 12 ? "PM" : "AM";
+                    hours = hours % 12;
+                    hours = hours ? hours : 12;
+                    setShowTime(`${hours.toString().padStart(2, '0')}:${m} ${ampm}`);
+                  }} 
+                />
               </div>
             </div>
             <div className="mt-4 flex items-center gap-3">
