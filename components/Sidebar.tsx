@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   PlaySquare,
   Ticket,
+  History,
 } from "lucide-react";
 
 export function Sidebar() {
@@ -63,6 +64,17 @@ export function Sidebar() {
         >
           <Ticket className="w-4 h-4" />
           New Booking
+        </Link>
+        <Link
+          href="/dashboard/bookings"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+            pathname === "/dashboard/bookings"
+              ? "bg-indigo-50 text-indigo-600"
+              : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Booking History
         </Link>
       </nav>
 

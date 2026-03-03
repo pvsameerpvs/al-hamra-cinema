@@ -1,5 +1,5 @@
 import { sheets, SPREADSHEET_ID } from "./google";
-import { Seat, SeatStatus, Show } from "./types";
+import { Seat, SeatStatus, Show, Booking } from "./types";
 
 interface MockBooking {
   seatId: string;
@@ -253,12 +253,18 @@ export async function getDashboardStats() {
       spreadsheetId: SPREADSHEET_ID,
       range: "revenue_logs!B2:D",
     });
+    
+    const bookingsRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "bookings!B2:H",
+    });
 
     const rows = revenueRes.data.values || [];
+    const bookingRows = bookingsRes.data.values || [];
     
     let totalRevenue = 0;
-    let totalTicketsSold = 0;
     let monthlyRevenue = 0;
+    let totalTicketsSold = 0;
     let monthlyTicketsSold = 0;
 
     const currentMonth = new Date().toLocaleString("default", { month: "long", year: "numeric" });
@@ -271,15 +277,29 @@ export async function getDashboardStats() {
       const month = row[1]; // e.g., "February 2026"
       
       totalRevenue += amount;
-      totalTicketsSold += 1;
-
       if (month === currentMonth) {
         monthlyRevenue += amount;
-        monthlyTicketsSold += 1;
       }
       
       if (!revenueByMonth[month]) revenueByMonth[month] = 0;
       revenueByMonth[month] += amount;
+    }
+    
+    for (const row of bookingRows) {
+      const seatIdsStr = row[0] || ""; // B column (seatIds)
+      const createdAtStr = row[6] || ""; // H column (createdAt)
+      
+      const cleanIds = seatIdsStr.replace(/\[.*?\]\s*/, "").split(", ").filter((s: string) => s.trim() !== "");
+      const ticketCount = cleanIds.length;
+      totalTicketsSold += ticketCount;
+
+      if (createdAtStr) {
+        const dateObj = new Date(createdAtStr);
+        const monthStr = dateObj.toLocaleString("default", { month: "long", year: "numeric" });
+        if (monthStr === currentMonth) {
+          monthlyTicketsSold += ticketCount;
+        }
+      }
     }
 
     const chartData = Object.keys(revenueByMonth).map((month) => ({
@@ -303,6 +323,50 @@ export async function getDashboardStats() {
       monthlyRevenue: 0,
       chartData: [],
     };
+  }
+}
+
+// -------------------------------------------------------------
+// Bookings Management
+// -------------------------------------------------------------
+
+export async function fetchAllBookings(): Promise<Booking[]> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    return globalForBookings.mockBookings.map((mb, i) => ({
+      id: `mock-${i}`,
+      seatIds: `[${mb.time}] ${mb.seatId}`,
+      customerName: "Mock Customer",
+      phone: "+971500000000",
+      email: "mock@example.com",
+      amount: 35,
+      paymentStatus: "Paid",
+      createdAt: new Date().toISOString()
+    })).reverse();
+  }
+
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "bookings!A2:H",
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return [];
+
+    return rows.map((row) => ({
+      id: row[0] || "",
+      seatIds: row[1] || "",
+      customerName: row[2] || "",
+      phone: row[3] || "",
+      email: row[4] || "",
+      amount: Number(row[5]) || 0,
+      paymentStatus: row[6] || "",
+      createdAt: row[7] || "",
+    })).reverse();
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    return [];
   }
 }
 

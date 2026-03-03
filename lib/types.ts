@@ -10,13 +10,14 @@ export interface Seat {
 }
 
 export interface Booking {
-  booking_id: string;
-  seat_id: string;
-  customer_name: string;
+  id: string;
+  seatIds: string;
+  customerName: string;
   phone: string;
+  email: string;
   amount: number;
-  payment_status: string;
-  created_at: string;
+  paymentStatus: string;
+  createdAt: string;
 }
 
 export interface RevenueLog {

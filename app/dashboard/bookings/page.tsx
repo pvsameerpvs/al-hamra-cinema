@@ -1,0 +1,189 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  MoveLeft,
+  Loader2,
+  History,
+  Ticket,
+  User,
+  Phone,
+  Mail,
+  CalendarDays,
+  CreditCard,
+} from "lucide-react";
+import Link from "next/link";
+import { Booking } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import { Sidebar } from "@/components/Sidebar";
+
+export default function BookingsHistoryPage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/bookings", { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to load bookings");
+      const data: Booking[] = await res.json();
+      setBookings(data);
+    } catch (err: unknown) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#f7f8fc] font-sans">
+      <Sidebar />
+      <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {/* Back */}
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl text-sm font-medium transition-colors w-fit shadow-sm mb-8"
+        >
+          <MoveLeft className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shadow-sm">
+              <History className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">Booking History</h1>
+              <p className="text-sm text-slate-400 mt-0.5">
+                View all customer ticket purchases and transaction details.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bookings Table */}
+        <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-700 text-sm">
+              All Transactions
+              {!loading && (
+                <span className="ml-2 text-xs text-slate-400 font-normal">
+                  ({bookings.length} total)
+                </span>
+              )}
+            </h3>
+          </div>
+
+          {loading ? (
+            <div className="p-16 flex flex-col items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-4" />
+              <p className="text-slate-400 text-sm">Loading booking history…</p>
+            </div>
+          ) : bookings.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="text-xs text-slate-400 uppercase tracking-wider bg-slate-50 border-b border-slate-100">
+                    <th className="px-6 py-3.5 font-semibold">Customer</th>
+                    <th className="px-6 py-3.5 font-semibold">Booking Details</th>
+                    <th className="px-6 py-3.5 font-semibold">Payment</th>
+                    <th className="px-6 py-3.5 font-semibold">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {bookings.map((booking) => {
+                    const cleanIds = booking.seatIds.replace(/\[.*?\]\s*/, "").split(", ").filter(s => s.trim() !== "");
+                    const ticketCount = cleanIds.length;
+                    
+                    const timeMatch = booking.seatIds.match(/\[(.*?)\]/);
+                    const showTime = timeMatch ? timeMatch[1] : "N/A";
+
+                    return (
+                      <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-indigo-400" />
+                              <span className="font-bold text-slate-800 text-base">{booking.customerName}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-500 text-xs mt-1">
+                              <Phone className="w-3.5 h-3.5 text-slate-400" />
+                              {booking.phone}
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-500 text-xs">
+                              <Mail className="w-3.5 h-3.5 text-slate-400" />
+                              {booking.email}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center justify-center px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-xs font-bold border border-indigo-100">
+                                {ticketCount} {ticketCount === 1 ? 'Ticket' : 'Tickets'}
+                              </span>
+                              <span className="text-slate-600 font-medium">for {showTime}</span>
+                            </div>
+                            <div className="flex items-start gap-2 text-slate-500 text-xs">
+                              <Ticket className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                              <span className="max-w-[180px] leading-tight break-words">{cleanIds.join(", ")}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="w-4 h-4 text-emerald-500" />
+                              <span className="font-bold text-slate-800">{booking.amount} AED</span>
+                            </div>
+                            <div>
+                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wide bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                {booking.paymentStatus}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-slate-400" />
+                            {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            }) : "Unknown Date"}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-16 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                <History className="w-7 h-7 text-slate-300" />
+              </div>
+              <p className="text-slate-500 font-medium mb-1">No bookings yet</p>
+              <p className="text-slate-400 text-sm mb-5">Transactions and history will appear here once purchases are made.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
