@@ -74,3 +74,32 @@
     --chart-5: 340 75% 55%;
   }
 }
+
+/* 
+  Thermal Receipt Print Overrides 
+  (For 80mm POZONE Printers or native browser Card/Custom size printing)
+*/
+@media print {
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+
+  body > :not(#receipt-root) {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  #receipt-root {
+    display: block !important;
+    position: static;
+    width: 80mm;
+    margin: 0;
+    padding: 0;
+  }
+}

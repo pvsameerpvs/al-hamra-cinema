@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Seat } from "@/lib/types";
 import {
   Dialog,
@@ -13,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Printer, CheckCircle2 } from "lucide-react";
+import { ReceiptTicket } from "@/components/ReceiptTicket";
 
 interface BookingDialogProps {
   isOpen: boolean;
@@ -34,7 +36,21 @@ export function BookingDialog({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [bookedSeats, setBookedSeats] = useState<Seat[]>([]);
   const { toast } = useToast();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const handleClose = () => {
+    setIsSuccess(false);
+    setBookedSeats([]);
+    setName("");
+    setPhone("");
+    setEmail("");
+    onClose();
+  };
 
   const totalAmount = seats.reduce((sum, s) => sum + s.price, 0);
   const todayDate = new Date().toLocaleDateString("en-US", {
@@ -81,8 +97,9 @@ export function BookingDialog({
         description: `Your seats ${seats.map(s => s.seat_id).join(", ")} have been successfully booked.`,
       });
 
+      setBookedSeats(seats);
+      setIsSuccess(true);
       onBookingComplete(seats.map(s => s.seat_id));
-      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast({
@@ -95,74 +112,137 @@ export function BookingDialog({
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl bg-white border-slate-100 shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-800">Complete Your Booking</DialogTitle>
-            <DialogDescription className="text-slate-500">
-              You are booking <strong className="text-indigo-600">{seats.length}</strong> seat(s):{" "}
-              <strong className="text-slate-700">{seats.map(s => s.seat_id).join(", ")}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-5 py-4 max-h-[70vh] overflow-y-auto px-1">
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs text-center font-medium shadow-sm">
-              ⚠️ Bookings are only valid for today:<br />
-              <strong className="text-amber-900">{todayDate} - {showTime}</strong>
-            </div>
+  const handlePrint = () => {
+    const originalTitle = document.title;
+    const safeName = name.replace(/[^a-zA-Z0-9]/g, '');
+    const last4Phone = phone.trim().slice(-4);
+    // Setting the exact filename standard for PDF saving/printing spoolers
+    document.title = `${safeName}-${last4Phone}`;
+    
+    window.print();
+    
+    // Revert the page title back to normal once the print dialog closes
+    document.title = originalTitle;
+  };
 
-          <div className="grid gap-2">
-            <label htmlFor="name" className="text-sm font-medium">
-              Full Name
-            </label>
-            <Input
-              id="name"
-              placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="phone" className="text-sm font-medium">
-              Phone Number
-            </label>
-            <Input
-              id="phone"
-              placeholder="+971 50 123 4567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email Address
-            </label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="john@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            </div>
-            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex justify-between items-center mt-2 shadow-sm">
-              <span className="text-sm font-medium text-indigo-800">Total Amount:</span>
-              <span className="font-bold text-xl text-indigo-600">{totalAmount} AED</span>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={onClose} disabled={loading} className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
-              Cancel
-            </Button>
-            <Button onClick={handleBooking} disabled={loading} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition-all">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Booking
-            </Button>
-          </DialogFooter>
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent className="sm:max-w-[425px] rounded-2xl bg-white border-slate-100 shadow-xl overflow-hidden [&>button:last-child]:print:hidden">
+          {!isSuccess ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-slate-800">Complete Your Booking</DialogTitle>
+                <DialogDescription className="text-slate-500">
+                  You are booking <strong className="text-indigo-600">{seats.length}</strong> seat(s):{" "}
+                  <strong className="text-slate-700">{seats.map(s => s.seat_id).join(", ")}</strong>.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-5 py-4 max-h-[70vh] overflow-y-auto px-1">
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs text-center font-medium shadow-sm">
+                  ⚠️ Bookings are only valid for today:<br />
+                  <strong className="text-amber-900">{todayDate} - {showTime}</strong>
+                </div>
+
+                <div className="grid gap-2">
+                  <label htmlFor="name" className="text-sm font-medium">
+                    Full Name
+                  </label>
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="phone" className="text-sm font-medium">
+                    Phone Number
+                  </label>
+                  <Input
+                    id="phone"
+                    placeholder="+971 50 123 4567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="email" className="text-sm font-medium">
+                    Email Address
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex justify-between items-center mt-2 shadow-sm">
+                  <span className="text-sm font-medium text-indigo-800">Total Amount:</span>
+                  <span className="font-bold text-xl text-indigo-600">{totalAmount} AED</span>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={handleClose} disabled={loading} className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
+                  Cancel
+                </Button>
+                <Button onClick={handleBooking} disabled={loading} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition-all">
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirm Booking
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="p-6 flex flex-col items-center justify-center text-center print:hidden">
+                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Booking Success!</h2>
+                <p className="text-slate-500 mb-6">
+                  Successfully booked {bookedSeats.length} ticket(s) under <strong className="text-slate-700">{name}</strong>.
+                </p>
+
+                <div className="flex flex-col w-full gap-3">
+                  <Button 
+                    onClick={handlePrint}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-200"
+                  >
+                    <Printer className="w-4 h-4 mr-2" />
+                    Print Receipt
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={handleClose}
+                    className="w-full rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
+                  >
+                    Close Window
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
-    </Dialog>
+      </Dialog>
+      
+      {/* Hidden Thermal Print Layout (Mounted outside dialog overflow!) */}
+      {isSuccess && mounted && typeof document !== 'undefined' && createPortal(
+        <ReceiptTicket 
+          movieTitle="Al Hamra Cinema Show"
+          showTime={showTime}
+          customerName={name}
+          customerPhone={phone}
+          customerEmail={email}
+          seats={bookedSeats}
+          totalAmount={totalAmount}
+          paymentMethod="CASH"
+        />,
+        document.body
+      )}
+    </>
   );
 }

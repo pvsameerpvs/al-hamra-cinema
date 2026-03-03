@@ -241,15 +241,13 @@ export function SeatGrid({ showTime }: { showTime?: string }) {
         </div>
       )}
 
-      {selectedSeats.length > 0 && (
-        <BookingDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          seats={selectedSeats}
-          onBookingComplete={handleBookingComplete}
-          showTime={showTime || ""}
-        />
-      )}
+      <BookingDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        seats={selectedSeats}
+        onBookingComplete={handleBookingComplete}
+        showTime={showTime || ""}
+      />
     </div>
   );
 }
