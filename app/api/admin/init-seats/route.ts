@@ -20,22 +20,35 @@ export async function GET() {
       "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
     ];
     for (const row of orchestraRows) {
-      for (let i = 1; i <= 27; i++) {
+      for (let i = 1; i <= 37; i++) {
         const id = `O-${row}-${i.toString().padStart(2, "0")}`;
         newSeats.push([id, "Orchestra", row, i, "Available", 30]);
       }
     }
 
     // Balcony Configuration
-    const balconyRows = ["A", "B", "C", "D", "E", "F"];
-    for (const row of balconyRows) {
-      for (let i = 11; i <= 36; i++) {
-        const id = `B-${row}-${i}`;
+    const balconySeatCounts: Record<string, number> = {
+      "A": 36,
+      "B": 37,
+      "C": 37,
+      "D": 39,
+      "E": 39,
+      "F": 37
+    };
+    for (const [row, count] of Object.entries(balconySeatCounts)) {
+      for (let i = 1; i <= count; i++) {
+        const id = `B-${row}-${i.toString().padStart(2, "0")}`;
         newSeats.push([id, "Balcony", row, i, "Available", 35]);
       }
     }
 
-    // Append to sheets
+    // Clear old sheets data first
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "seats!A2:F",
+    });
+
+    // Append new seats to sheets
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: "seats!A2:F",
