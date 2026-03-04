@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   MoveLeft,
   Plus,
@@ -24,8 +25,10 @@ import { Sidebar } from "@/components/Sidebar";
 let cachedShows: Show[] | null = null;
 
 export default function ManageShowsPage() {
+  const router = useRouter();
   const [shows, setShows] = useState<Show[]>(cachedShows || []);
   const [loading, setLoading] = useState(!cachedShows);
+  const [roleChecking, setRoleChecking] = useState(true);
 
   // Create / Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,6 +39,21 @@ export default function ManageShowsPage() {
 
   const [actionLoading, setActionLoading] = useState(false);
   const { toast } = useToast();
+
+  // ── Role guard ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.user || d.user.role !== "admin") {
+          router.replace("/dashboard");
+        } else {
+          setRoleChecking(false);
+        }
+      })
+      .catch(() => router.replace("/dashboard"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchShows = async () => {
     if (!cachedShows) setLoading(true);
@@ -57,9 +75,9 @@ export default function ManageShowsPage() {
   };
 
   useEffect(() => {
-    fetchShows();
+    if (!roleChecking) fetchShows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [roleChecking]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -143,6 +161,15 @@ export default function ManageShowsPage() {
       setActionLoading(false);
     }
   };
+
+  // Show a blank loading screen while verifying role
+  if (roleChecking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f7f8fc]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
