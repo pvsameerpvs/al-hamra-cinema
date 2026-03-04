@@ -7,12 +7,13 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const time = searchParams.get('time');
+    const showId = searchParams.get('showId');
 
-    if (!time) {
-      return NextResponse.json({ error: "Time is required" }, { status: 400 });
+    if (!time && !showId) {
+      return NextResponse.json({ error: "Time or showId is required" }, { status: 400 });
     }
 
-    const seats = await fetchAllSeats(time);
+    const seats = await fetchAllSeats(showId || time || "");
     return NextResponse.json(seats);
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : "Unknown error";

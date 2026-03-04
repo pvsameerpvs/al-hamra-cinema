@@ -189,7 +189,7 @@ export async function createBookingRecord(
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: "bookings!A:H",
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
       values: [
@@ -223,7 +223,7 @@ export async function createRevenueLog(
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: "revenue_logs!A:D",
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
       values: [[bookingId, amount, month, date]],
@@ -263,8 +263,10 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
     const bookingRows = bookingsRes.data.values || [];
     
     let totalTicketsSold = 0;
+    let totalBookings = 0;
     let totalRevenue = 0;
     let monthlyTicketsSold = 0;
+    let monthlyBookings = 0;
     let monthlyRevenue = 0;
     
     const now = new Date();
@@ -333,9 +335,11 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
 
       const cleanIds = seatIdsStr.replace(/\[.*?\]\s*/, "").split(", ").filter((s: string) => s.trim() !== "");
       const ticketCount = cleanIds.length;
+      totalBookings += 1;
       totalTicketsSold += ticketCount;
 
       if (monthStr === currentMonthLong || tightMonthStr === currentMonthTight) {
+        monthlyBookings += 1;
         monthlyTicketsSold += ticketCount;
       }
     }
@@ -345,8 +349,18 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
     for (const row of rows) {
       const rBookingId = row[0] || "";
       const amount = Number(row[1]) || 0;
-      const monthStrLog = row[2] || "";
-      const dateStrLog = row[3] || "";
+      let monthStrLog = row[2] || "";
+      let dateStrLog = row[3] || "";
+
+      // Handle raw Google Sheets serial numbers internally (e.g. 46082 -> Date)
+      if (!isNaN(Number(dateStrLog)) && Number(dateStrLog) > 40000) {
+        const d = new Date(Math.round((Number(dateStrLog) - 25569) * 864e5));
+        dateStrLog = d.toISOString().split("T")[0]; // Convert back to YYYY-MM-DD
+      }
+      if (!isNaN(Number(monthStrLog)) && Number(monthStrLog) > 40000) {
+        const d = new Date(Math.round((Number(monthStrLog) - 25569) * 864e5));
+        monthStrLog = d.toLocaleString("default", { month: "long", year: "numeric" });
+      }
       
       // If we are filtering by movieId, only include revenue logs that correspond to a valid booking
       if (movieId && !validBookingIds.has(rBookingId)) {
@@ -390,8 +404,10 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
 
     return {
       totalTicketsSold,
+      totalBookings,
       totalRevenue,
       monthlyTicketsSold,
+      monthlyBookings,
       monthlyRevenue,
       chartData,
     };
@@ -399,8 +415,10 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
     console.error("Error fetching dashboard stats:", error);
     return {
       totalTicketsSold: 0,
+      totalBookings: 0,
       totalRevenue: 0,
       monthlyTicketsSold: 0,
+      monthlyBookings: 0,
       monthlyRevenue: 0,
       chartData: [],
     };

@@ -23,8 +23,10 @@ import { Show } from "@/lib/types";
 
 interface DashboardStats {
   totalTicketsSold: number;
+  totalBookings: number;
   totalRevenue: number;
   monthlyTicketsSold: number;
+  monthlyBookings: number;
   monthlyRevenue: number;
   chartData: Array<{ name: string; revenue: number }>;
 }

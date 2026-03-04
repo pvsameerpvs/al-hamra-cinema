@@ -24,6 +24,7 @@ interface BookingDialogProps {
   seats: Seat[];
   onBookingComplete: (seatIds: string[]) => void;
   showTime: string;
+  showId?: string;
 }
 
 export function BookingDialog({
@@ -32,6 +33,7 @@ export function BookingDialog({
   seats,
   onBookingComplete,
   showTime,
+  showId,
 }: BookingDialogProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -89,6 +91,7 @@ export function BookingDialog({
           email,
           amount: totalAmount,
           showTime,
+          showId,
           paymentMethod,
         }),
       });

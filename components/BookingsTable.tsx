@@ -46,9 +46,17 @@ export function BookingsTable({ bookings, shows, loading }: BookingsTableProps) 
             const ticketCount = cleanIds.length;
             
             const timeMatch = booking.seatIds.match(/\[(.*?)\]/);
-            const showTime = timeMatch ? timeMatch[1] : "N/A";
+            const bracketValue = timeMatch ? timeMatch[1] : "N/A";
             
-            const movieMatch = shows.find(s => s.showTime === showTime);
+            // Forward compatible: ID binding
+            let movieMatch = shows.find(s => s.id === bracketValue);
+
+            // Backward compatible: Time string binding
+            if (!movieMatch) {
+              movieMatch = shows.find(s => s.showTime === bracketValue);
+            }
+            
+            const showTime = movieMatch ? movieMatch.showTime : bracketValue;
             const movieTitle = movieMatch ? movieMatch.movieTitle : "Unknown Movie";
 
             return (

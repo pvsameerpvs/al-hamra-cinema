@@ -4,16 +4,18 @@ import { DollarSign, Ticket, Calendar, TrendingUp, ArrowUp } from "lucide-react"
 
 interface DashboardStats {
   totalTicketsSold: number;
+  totalBookings: number;
   totalRevenue: number;
   monthlyTicketsSold: number;
+  monthlyBookings: number;
   monthlyRevenue: number;
 }
 
 const cards = [
   {
-    key: "totalTicketsSold" as keyof DashboardStats,
-    label: "Total Tickets Sold",
-    sub: "Lifetime total tickets",
+    key: "totalBookings" as keyof DashboardStats,
+    label: "Total Bookings",
+    sub: (stats: DashboardStats) => `${stats.totalTicketsSold.toLocaleString()} total tickets`,
     icon: Ticket,
     color: "bg-violet-50",
     iconColor: "text-violet-500",
@@ -23,7 +25,7 @@ const cards = [
   {
     key: "totalRevenue" as keyof DashboardStats,
     label: "Total Revenue",
-    sub: "Lifetime revenue",
+    sub: () => "Lifetime revenue",
     icon: DollarSign,
     color: "bg-emerald-50",
     iconColor: "text-emerald-500",
@@ -31,9 +33,9 @@ const cards = [
     format: (v: number) => `${v.toLocaleString()} AED`,
   },
   {
-    key: "monthlyTicketsSold" as keyof DashboardStats,
-    label: "Monthly Tickets",
-    sub: "Tickets sold this month",
+    key: "monthlyBookings" as keyof DashboardStats,
+    label: "Monthly Bookings",
+    sub: (stats: DashboardStats) => `${stats.monthlyTicketsSold.toLocaleString()} tickets this month`,
     icon: Calendar,
     color: "bg-amber-50",
     iconColor: "text-amber-500",
@@ -43,7 +45,7 @@ const cards = [
   {
     key: "monthlyRevenue" as keyof DashboardStats,
     label: "Monthly Revenue",
-    sub: "Revenue this month",
+    sub: () => "Revenue this month",
     icon: TrendingUp,
     color: "bg-indigo-50",
     iconColor: "text-indigo-500",
@@ -77,7 +79,7 @@ export function DashboardCards({ stats }: { stats: DashboardStats }) {
                 {card.format(value)}
               </p>
               <p className="text-sm font-medium text-slate-500 mt-1">{card.label}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{card.sub}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{card.sub(stats)}</p>
             </div>
           </div>
         );

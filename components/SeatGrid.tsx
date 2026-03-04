@@ -10,8 +10,8 @@ import { Loader2 } from "lucide-react";
 
 const seatCache: Record<string, { data: Seat[], timestamp: number }> = {};
 
-export function SeatGrid({ showTime }: { showTime?: string }) {
-  const cacheKey = showTime || "all";
+export function SeatGrid({ showTime, showId }: { showTime?: string, showId?: string }) {
+  const cacheKey = showId || showTime || "all";
   const cachedData = seatCache[cacheKey];
   const [seats, setSeats] = useState<Seat[]>(cachedData ? cachedData.data : []);
   const [loading, setLoading] = useState(!cachedData);
@@ -22,7 +22,9 @@ export function SeatGrid({ showTime }: { showTime?: string }) {
   const fetchSeats = useCallback(async (showLoader = false) => {
     if (showLoader && !seatCache[cacheKey]) setLoading(true);
     try {
-      const url = showTime ? `/api/seats?time=${encodeURIComponent(showTime)}` : "/api/seats";
+      const url = showId 
+        ? `/api/seats?showId=${encodeURIComponent(showId)}` 
+        : showTime ? `/api/seats?time=${encodeURIComponent(showTime)}` : "/api/seats";
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch");
       const data: Seat[] = await res.json();
@@ -41,7 +43,7 @@ export function SeatGrid({ showTime }: { showTime?: string }) {
     } finally {
       setLoading(false);
     }
-  }, [showTime, cacheKey, toast]);
+  }, [showTime, showId, cacheKey, toast]);
 
   useEffect(() => {
     fetchSeats(true);
@@ -247,6 +249,7 @@ export function SeatGrid({ showTime }: { showTime?: string }) {
         seats={selectedSeats}
         onBookingComplete={handleBookingComplete}
         showTime={showTime || ""}
+        showId={showId || ""}
       />
     </div>
   );

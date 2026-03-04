@@ -8,9 +8,9 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: Request) {
   try {
-    const { seatIds, customerName, phone, email, amount, showTime, paymentMethod } = await req.json();
+    const { seatIds, customerName, phone, email, amount, showId, paymentMethod } = await req.json();
 
-    if (!seatIds || !Array.isArray(seatIds) || seatIds.length === 0 || !customerName || !phone || !email || amount === undefined || !showTime) {
+    if (!seatIds || !Array.isArray(seatIds) || seatIds.length === 0 || !customerName || !phone || !email || amount === undefined || !showId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -26,10 +26,9 @@ export async function POST(req: Request) {
 
     // 1. (Removed global layout update) Seat statuses are now derived dynamically per showTime based on Bookings sheet!
 
-    // 2. Insert booking record
     await createBookingRecord(
       bookingId,
-      showTime ? `[${showTime}] ${seatIds.join(", ")}` : seatIds.join(", "),
+      showId ? `[${showId}] ${seatIds.join(", ")}` : seatIds.join(", "),
       customerName,
       phone,
       email,
