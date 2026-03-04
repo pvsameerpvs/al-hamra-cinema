@@ -279,30 +279,28 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
     const revenueByMonth: Record<string, number> = {};
 
     // For server-side filtering
-    let targetShowTime: string | null = null;
+    const validTargetIdentifiers = new Set<string>();
     const validBookingIds = new Set<string>();
 
     if (movieId) {
       const allShows = await fetchAllShows();
-      const targetShow = allShows.find(s => s.id === movieId);
-      if (targetShow) {
-        targetShowTime = targetShow.showTime;
+      const targetShows = allShows.filter(s => s.movieTitle === movieId);
+      for (const show of targetShows) {
+        validTargetIdentifiers.add(show.id);
+        validTargetIdentifiers.add(show.showTime);
       }
     }
 
     // Process Bookings first so we know which IDs belong to the target show
     for (const row of bookingRows) {
-      // Assuming ID is A column if B is seatIds, let's verify: Wait, in getDashboardStats earlier:
-      // A: bookingId, B: seatIds, C: name, D: phone, E: email, F: amount, G: status, H: createdAt
-      // Let's rely on B: seatIds to check the time
       const seatIdsStr = row[1] || ""; // B column (seatIds) in bookingRows
       const bId = row[0] || ""; // A column 
       const createdAtStr = row[7] || ""; // H column (createdAt)
       
       const timeMatch = seatIdsStr.match(/\[(.*?)\]/);
-      const rowShowTime = timeMatch ? timeMatch[1] : null;
+      const rowIdentifier = timeMatch ? timeMatch[1] : null;
 
-      if (targetShowTime && rowShowTime !== targetShowTime) {
+      if (movieId && rowIdentifier && !validTargetIdentifiers.has(rowIdentifier)) {
         continue; // Skip this booking if it doesn't match the filtered movie
       }
 

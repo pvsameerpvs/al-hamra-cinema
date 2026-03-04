@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DashboardCards } from "@/components/DashboardCards";
 import { RevenueChart } from "@/components/RevenueChart";
-import { formatTime12Hour } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
 import {
   Loader2,
@@ -234,9 +233,9 @@ function DashboardContent() {
                     className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 cursor-pointer outline-none"
                   >
                     <option value="all">All Movies</option>
-                    {shows.map(show => (
-                      <option key={show.id} value={show.id}>
-                        {show.movieTitle} ({formatTime12Hour(show.showTime)})
+                    {Array.from(new Set(shows.map(s => s.movieTitle))).map(title => (
+                      <option key={title} value={title}>
+                        {title}
                       </option>
                     ))}
                   </select>
