@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DashboardCards } from "@/components/DashboardCards";
 import { RevenueChart } from "@/components/RevenueChart";
+import { formatTime12Hour } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
 import {
   Loader2,
@@ -234,7 +235,7 @@ function DashboardContent() {
                     <option value="all">All Movies</option>
                     {shows.map(show => (
                       <option key={show.id} value={show.id}>
-                        {show.movieTitle} ({show.showTime})
+                        {show.movieTitle} ({formatTime12Hour(show.showTime)})
                       </option>
                     ))}
                   </select>

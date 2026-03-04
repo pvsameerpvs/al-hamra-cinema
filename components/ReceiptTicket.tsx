@@ -68,17 +68,17 @@ export function ReceiptTicket({
           <span className="text-right">{currentDate}</span>
         </div>
         <div className="flex justify-between">
-          <span>Movie:</span>
-          <span className="font-bold text-right uppercase max-w-[150px]">{movieTitle}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Show Time:</span>
-          <span className="font-bold text-right">{showTime}</span>
-        </div>
-        <div className="flex justify-between">
           <span>Ticket Qty:</span>
           <span className="font-bold text-lg text-right">{seats.length}</span>
         </div>
+      </div>
+
+      <div className="border-t-2 border-dashed border-black my-3"></div>
+
+      {/* Prominent Movie Details */}
+      <div className="text-center my-4 border-y-2 border-black py-3">
+        <h2 className="text-xl font-bold uppercase leading-tight mb-1">{movieTitle}</h2>
+        <p className="font-bold text-sm">SHOW: {showTime}</p>
       </div>
 
       <div className="border-t-2 border-dashed border-black my-3"></div>
@@ -109,8 +109,17 @@ export function ReceiptTicket({
 
       {/* Totals */}
       <div className="space-y-1 mb-6">
+        <div className="flex justify-between text-sm">
+          <span>Subtotal:</span>
+          <span>{((totalAmount * 100) / 105).toFixed(2)} AED</span>
+        </div>
+        <div className="flex justify-between text-sm font-semibold">
+          <span>VAT (5%):</span>
+          <span>{((totalAmount * 5) / 105).toFixed(2)} AED</span>
+        </div>
+        <div className="border-t-2 border-black my-2"></div>
         <div className="flex justify-between text-xl font-bold">
-          <span>TOTAL</span>
+          <span>TOTAL:</span>
           <span>{totalAmount} AED</span>
         </div>
         <div className="flex justify-between text-xs mt-2">

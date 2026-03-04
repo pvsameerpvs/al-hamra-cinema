@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Film, Clock, Ticket } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
+import { formatTime12Hour } from "@/lib/utils";
 
 export const revalidate = 0;
 
@@ -67,7 +68,7 @@ export default async function PublicShowsPage() {
 
                 <div className="relative z-10 mt-auto">
                   <h3 className="text-2xl font-bold mb-2 text-slate-800 group-hover:text-indigo-600 transition-colors">
-                    {show.showTime}
+                    {formatTime12Hour(show.showTime)}
                   </h3>
                   <div className="flex items-center gap-2 text-slate-500">
                     <Film className="w-4 h-4" />

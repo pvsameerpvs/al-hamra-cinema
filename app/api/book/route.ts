@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: Request) {
   try {
-    const { seatIds, customerName, phone, email, amount, showTime } = await req.json();
+    const { seatIds, customerName, phone, email, amount, showTime, paymentMethod } = await req.json();
 
     if (!seatIds || !Array.isArray(seatIds) || seatIds.length === 0 || !customerName || !phone || !email || amount === undefined || !showTime) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       phone,
       email,
       amount,
-      "Paid"
+      paymentMethod ? `Paid - ${paymentMethod}` : "Paid - CASH"
     );
 
     // 3. Insert revenue log

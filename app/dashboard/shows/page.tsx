@@ -18,6 +18,7 @@ import { Show } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { formatTime12Hour } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
 
 let cachedShows: Show[] | null = null;
@@ -295,7 +296,7 @@ export default function ManageShowsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5 text-slate-600">
                           <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          {show.showTime}
+                          {formatTime12Hour(show.showTime)}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">

@@ -548,7 +548,7 @@ export async function createShow(show: Show) {
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: "shows!A:D",
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
       values: [[show.id, show.movieTitle, show.showTime, show.isActive ? "TRUE" : "FALSE"]],
@@ -597,7 +597,7 @@ export async function updateShow(showId: string, updatedShow: Partial<Show>) {
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `shows!A${exactRow}:D${exactRow}`,
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: "RAW",
     requestBody: {
       values: [[mergedShow.id, mergedShow.movieTitle, mergedShow.showTime, mergedShow.isActive]],
     },

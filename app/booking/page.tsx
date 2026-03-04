@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Film, Clock, Ticket } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
+import { formatTime12Hour } from "@/lib/utils";
 
 export const revalidate = 0;
 
@@ -61,7 +62,7 @@ export default async function BookingSelectionPage() {
                   <div className="w-16 h-16 mb-4 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
                     <Clock className="w-8 h-8" />
                   </div>
-                  <span className="text-2xl font-bold mb-2 text-slate-800 text-center">{show.showTime}</span>
+                  <span className="text-2xl font-bold mb-2 text-slate-800 text-center">{formatTime12Hour(show.showTime)}</span>
                   <span className="text-slate-500 font-medium text-sm text-center line-clamp-1 px-4">{show.movieTitle}</span>
                 </Link>
               )

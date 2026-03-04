@@ -18,6 +18,7 @@ import { Booking, Show } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/Sidebar";
 import { BookingsTable } from "@/components/BookingsTable";
+import { formatTime12Hour } from "@/lib/utils";
 
 export default function BookingsHistoryPage() {
   return (
@@ -205,7 +206,7 @@ function BookingsHistoryContent() {
                   <option value="all">All Movies</option>
                   {shows.map(show => (
                     <option key={show.id} value={show.id}>
-                      {show.movieTitle} ({show.showTime})
+                      {show.movieTitle} ({formatTime12Hour(show.showTime)})
                     </option>
                   ))}
                 </select>

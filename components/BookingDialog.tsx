@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Printer, CheckCircle2 } from "lucide-react";
 import { ReceiptTicket } from "@/components/ReceiptTicket";
+import { formatTime12Hour } from "@/lib/utils";
 
 interface BookingDialogProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export function BookingDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [bookedSeats, setBookedSeats] = useState<Seat[]>([]);
@@ -49,10 +51,14 @@ export function BookingDialog({
     setName("");
     setPhone("");
     setEmail("");
+    setPaymentMethod("CASH");
     onClose();
   };
 
-  const totalAmount = seats.reduce((sum, s) => sum + s.price, 0);
+  const activeSeats = isSuccess ? bookedSeats : seats;
+  const totalAmount = activeSeats.reduce((sum, s) => sum + s.price, 0);
+  const subtotal = ((totalAmount * 100) / 105).toFixed(2);
+  const vat = ((totalAmount * 5) / 105).toFixed(2);
   const todayDate = new Date().toLocaleDateString("en-US", {
     weekday: "short",
     year: "numeric",
@@ -83,6 +89,7 @@ export function BookingDialog({
           email,
           amount: totalAmount,
           showTime,
+          paymentMethod,
         }),
       });
 
@@ -141,7 +148,7 @@ export function BookingDialog({
               <div className="grid gap-5 py-4 max-h-[70vh] overflow-y-auto px-1">
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs text-center font-medium shadow-sm">
                   ⚠️ Bookings are only valid for today:<br />
-                  <strong className="text-amber-900">{todayDate} - {showTime}</strong>
+                  <strong className="text-amber-900">{todayDate} - {formatTime12Hour(showTime)}</strong>
                 </div>
 
                 <div className="grid gap-2">
@@ -175,15 +182,40 @@ export function BookingDialog({
                   <Input
                     id="email"
                     type="email"
-                    placeholder="john@example.com"
+                    placeholder="[EMAIL_ADDRESS]"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
-                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex justify-between items-center mt-2 shadow-sm">
-                  <span className="text-sm font-medium text-indigo-800">Total Amount:</span>
-                  <span className="font-bold text-xl text-indigo-600">{totalAmount} AED</span>
+                <div className="grid gap-2">
+                  <label htmlFor="paymentMethod" className="text-sm font-medium">
+                    Payment Method
+                  </label>
+                  <select
+                    id="paymentMethod"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="BANK">Bank Transfer / Card</option>
+                  </select>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex flex-col gap-2 mt-2 shadow-sm">
+                  <div className="flex justify-between items-center text-sm text-indigo-700">
+                    <span>Subtotal:</span>
+                    <span>{subtotal} AED</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-indigo-700">
+                    <span>VAT (5%):</span>
+                    <span>{vat} AED</span>
+                  </div>
+                  <div className="border-t border-indigo-200/60 my-1"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-indigo-800">Total Amount:</span>
+                    <span className="font-bold text-xl text-indigo-600">{totalAmount} AED</span>
+                  </div>
                 </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0">
@@ -203,9 +235,29 @@ export function BookingDialog({
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-2">Booking Success!</h2>
-                <p className="text-slate-500 mb-6">
+                <p className="text-slate-500 mb-4">
                   Successfully booked {bookedSeats.length} ticket(s) under <strong className="text-slate-700">{name}</strong>.
                 </p>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 w-full mb-6">
+                  <div className="flex justify-between text-sm text-slate-500 mb-1">
+                    <span>Subtotal:</span>
+                    <span>{subtotal} AED</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-slate-500 mb-2">
+                    <span>VAT (5%):</span>
+                    <span>{vat} AED</span>
+                  </div>
+                  <div className="border-t border-slate-200 my-2"></div>
+                  <div className="flex justify-between font-bold text-slate-800 text-lg">
+                    <span>Total Paid:</span>
+                    <span>{totalAmount} AED</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-400 mt-1">
+                    <span>Payment Method:</span>
+                    <span className="uppercase">{paymentMethod}</span>
+                  </div>
+                </div>
 
                 <div className="flex flex-col w-full gap-3">
                   <Button 
@@ -233,13 +285,13 @@ export function BookingDialog({
       {isSuccess && mounted && typeof document !== 'undefined' && createPortal(
         <ReceiptTicket 
           movieTitle="Al Hamra Cinema Show"
-          showTime={showTime}
+          showTime={formatTime12Hour(showTime)}
           customerName={name}
           customerPhone={phone}
           customerEmail={email}
           seats={bookedSeats}
           totalAmount={totalAmount}
-          paymentMethod="CASH"
+          paymentMethod={paymentMethod}
         />,
         document.body
       )}
