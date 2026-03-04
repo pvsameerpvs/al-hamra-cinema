@@ -1,16 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   PlaySquare,
   Ticket,
   History,
+  LogOut,
 } from "lucide-react";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(d => {
+        if (d.user) setUser(d.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  };
 
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 z-20 flex flex-col shadow-sm hidden lg:flex">
@@ -43,17 +61,19 @@ export function Sidebar() {
           <LayoutDashboard className="w-4 h-4" />
           Dashboard
         </Link>
-        <Link
-          href="/dashboard/shows"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
-            pathname === "/dashboard/shows"
-              ? "bg-indigo-50 text-indigo-600"
-              : "text-slate-600 hover:bg-slate-50"
-          }`}
-        >
-          <PlaySquare className="w-4 h-4" />
-          Manage Shows
-        </Link>
+        {user?.role === "admin" && (
+          <Link
+            href="/dashboard/shows"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+              pathname === "/dashboard/shows"
+                ? "bg-indigo-50 text-indigo-600"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <PlaySquare className="w-4 h-4" />
+            Manage Shows
+          </Link>
+        )}
         <Link
           href="/booking"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
@@ -79,16 +99,23 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-slate-100">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
-            A
+      <div className="px-4 py-4 border-t border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-3 px-2 flex-1 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 uppercase">
+            {user?.email?.[0] || "A"}
           </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-700">Admin</p>
-            <p className="text-xs text-slate-400">Super User</p>
+          <div className="overflow-hidden">
+            <p className="text-xs font-semibold text-slate-700 truncate">{user?.email || "Admin"}</p>
+            <p className="text-xs text-slate-400 capitalize">{user?.role || "Super User"}</p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          title="Sign Out"
+          className="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </aside>
   );

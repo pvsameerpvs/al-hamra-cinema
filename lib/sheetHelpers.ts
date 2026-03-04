@@ -1,5 +1,5 @@
 import { sheets, SPREADSHEET_ID } from "./google";
-import { Seat, SeatStatus, Show, Booking } from "./types";
+import { Seat, SeatStatus, Show, Booking, User, UserRole } from "./types";
 
 interface MockBooking {
   seatId: string;
@@ -630,3 +630,180 @@ export async function deleteShow(showId: string) {
   // It's safer to just set isActive to false or clear the row rather than hard deleting the row natively via API
   await updateShow(showId, { isActive: false });
 }
+
+export async function getUserByCredentials(emailStr: string, passwordStr: string): Promise<{email: string, role: string} | null> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  try {
+    if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+      if (emailStr === "admin@alhamra.com" && passwordStr === "admin@321") return { email: emailStr, role: "admin" };
+      if (emailStr === "user@alhamra.com" && passwordStr === "user@123") return { email: emailStr, role: "user" };
+      return null;
+    }
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "users!A2:D",
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return null;
+
+    const row = rows.find(r => r[0] === emailStr && r[1] === passwordStr);
+    if (row) {
+      return { email: row[0], role: row[2] || "user" };
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.includes("Unable to parse range")) {
+      // The "users" tab doesn't exist yet, we fallback to default hardcode
+      if (emailStr === "admin@alhamra.com" && passwordStr === "admin@321") return { email: emailStr, role: "admin" };
+      if (emailStr === "user@alhamra.com" && passwordStr === "user@123") return { email: emailStr, role: "user" };
+    }
+    console.error("Error finding user:", error);
+    return null;
+  }
+  return null;
+}
+
+// -------------------------------------------------------------
+// Users Management
+// Schema: users!A:D
+//   A: email      — unique login identifier
+//   B: password   — plain text (consider hashing in production)
+//   C: role       — "admin" | "user"
+//   D: createdAt  — ISO 8601 timestamp
+// -------------------------------------------------------------
+
+const USERS_SHEET_RANGE = "users!A2:D";
+const USERS_HEADER = ["email", "password", "role", "createdAt"];
+
+// In-memory mock store (used when Google Sheets is not configured)
+const globalForUsers = global as unknown as { mockUsers: User[] };
+if (!globalForUsers.mockUsers) {
+  globalForUsers.mockUsers = [
+    { email: "admin@alhamra.com", password: "admin@321", role: "admin", createdAt: new Date().toISOString() },
+    { email: "user@alhamra.com",  password: "user@123",  role: "user",  createdAt: new Date().toISOString() },
+  ];
+}
+
+function isMockMode() {
+  const pk = process.env.GOOGLE_PRIVATE_KEY || "";
+  return !pk || pk.includes("Your\\nSuper") || pk.includes("Your\nSuper");
+}
+
+/** Return all users (without exposing passwords to the caller — handled at API layer) */
+export async function getAllUsers(): Promise<User[]> {
+  if (isMockMode()) {
+    return [...globalForUsers.mockUsers];
+  }
+
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: USERS_SHEET_RANGE,
+    });
+    const rows = res.data.values || [];
+    return rows.map((r) => ({
+      email: r[0] || "",
+      password: r[1] || "",
+      role: (r[2] as UserRole) || "user",
+      createdAt: r[3] || "",
+    }));
+  } catch (err) {
+    console.error("getAllUsers error:", err);
+    return [];
+  }
+}
+
+/** Create a new user row in the sheet */
+export async function createUser(user: Omit<User, "createdAt">): Promise<void> {
+  const createdAt = new Date().toISOString();
+  const newUser: User = { ...user, createdAt };
+
+  if (isMockMode()) {
+    globalForUsers.mockUsers.push(newUser);
+    return;
+  }
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: USERS_SHEET_RANGE,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [[newUser.email, newUser.password, newUser.role, newUser.createdAt]],
+    },
+  });
+}
+
+/** Update an existing user's role (and optionally password) by email */
+export async function updateUser(
+  email: string,
+  updates: Partial<Pick<User, "password" | "role">>
+): Promise<void> {
+  if (isMockMode()) {
+    const idx = globalForUsers.mockUsers.findIndex((u) => u.email === email);
+    if (idx !== -1) {
+      globalForUsers.mockUsers[idx] = { ...globalForUsers.mockUsers[idx], ...updates };
+    }
+    return;
+  }
+
+  // Find the row number in the sheet
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "users!A:A",
+  });
+  const emails = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = emails.indexOf(email);
+  if (rowIndex === -1) throw new Error(`User ${email} not found`);
+  const sheetRow = rowIndex + 1; // 1-based (header is row 1, data starts at row 2)
+
+  // Fetch current row to merge changes
+  const curRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `users!A${sheetRow}:D${sheetRow}`,
+  });
+  const cur = curRes.data.values?.[0] || [];
+
+  const merged = [
+    cur[0] || email,
+    updates.password !== undefined ? updates.password : (cur[1] || ""),
+    updates.role !== undefined ? updates.role : (cur[2] || "user"),
+    cur[3] || new Date().toISOString(),
+  ];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `users!A${sheetRow}:D${sheetRow}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [merged] },
+  });
+}
+
+/** Delete (clear) a user row by email */
+export async function deleteUser(email: string): Promise<void> {
+  if (isMockMode()) {
+    globalForUsers.mockUsers = globalForUsers.mockUsers.filter((u) => u.email !== email);
+    return;
+  }
+
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "users!A:A",
+  });
+  const emails = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = emails.indexOf(email);
+  if (rowIndex === -1) throw new Error(`User ${email} not found`);
+  const sheetRow = rowIndex + 1;
+
+  // Clear the row (blanks it out)
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `users!A${sheetRow}:D${sheetRow}`,
+  });
+}
+
+/** Export the header constant so the init route can use it */
+export { USERS_HEADER };
+
+

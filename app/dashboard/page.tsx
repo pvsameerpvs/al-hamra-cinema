@@ -27,6 +27,7 @@ interface DashboardStats {
   monthlyBookings: number;
   monthlyRevenue: number;
   chartData: Array<{ name: string; revenue: number }>;
+  userRole?: string;
 }
 
 let cachedStats: DashboardStats | null = null;
@@ -196,14 +197,16 @@ function DashboardContent() {
               <p className="text-indigo-100 text-sm font-medium mb-1">Welcome back!</p>
               <h2 className="text-2xl font-bold mb-3">Al-Hamra Cinema Admin</h2>
               <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/dashboard/shows"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg text-sm font-medium text-white transition-colors"
-                >
-                  <PlaySquare className="w-4 h-4" />
-                  Manage Shows
-                  <ChevronRight className="w-3 h-3 -ml-1" />
-                </Link>
+                {stats.userRole === "admin" && (
+                  <Link
+                    href="/dashboard/shows"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg text-sm font-medium text-white transition-colors"
+                  >
+                    <PlaySquare className="w-4 h-4" />
+                    Manage Shows
+                    <ChevronRight className="w-3 h-3 -ml-1" />
+                  </Link>
+                )}
                 <Link
                   href="/booking"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-semibold transition-colors shadow"
