@@ -632,14 +632,7 @@ export async function deleteShow(showId: string) {
 }
 
 export async function getUserByCredentials(emailStr: string, passwordStr: string): Promise<{email: string, role: string} | null> {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
   try {
-    if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
-      if (emailStr === "admin@alhamra.com" && passwordStr === "admin@321") return { email: emailStr, role: "admin" };
-      if (emailStr === "user@alhamra.com" && passwordStr === "user@123") return { email: emailStr, role: "user" };
-      return null;
-    }
-
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: "users!A2:D",
@@ -648,17 +641,17 @@ export async function getUserByCredentials(emailStr: string, passwordStr: string
     const rows = response.data.values;
     if (!rows || rows.length === 0) return null;
 
-    const row = rows.find(r => r[0] === emailStr && r[1] === passwordStr);
+    // Trimming the email from the sheet just in case there are trailing spaces in the DB
+    const row = rows.find(r => (r[0] || "").trim() === emailStr && r[1] === passwordStr);
     if (row) {
-      return { email: row[0], role: row[2] || "user" };
+      return { email: row[0].trim(), role: row[2] || "user" };
     }
   } catch (error: unknown) {
     if (error instanceof Error && error.message.includes("Unable to parse range")) {
-      // The "users" tab doesn't exist yet, we fallback to default hardcode
-      if (emailStr === "admin@alhamra.com" && passwordStr === "admin@321") return { email: emailStr, role: "admin" };
-      if (emailStr === "user@alhamra.com" && passwordStr === "user@123") return { email: emailStr, role: "user" };
+      console.error("The 'users' tab does not exist in the Google Sheet!");
+    } else {
+      console.error("Error finding user:", error);
     }
-    console.error("Error finding user:", error);
     return null;
   }
   return null;
@@ -676,25 +669,10 @@ export async function getUserByCredentials(emailStr: string, passwordStr: string
 const USERS_SHEET_RANGE = "users!A2:D";
 const USERS_HEADER = ["email", "password", "role", "createdAt"];
 
-// In-memory mock store (used when Google Sheets is not configured)
-const globalForUsers = global as unknown as { mockUsers: User[] };
-if (!globalForUsers.mockUsers) {
-  globalForUsers.mockUsers = [
-    { email: "admin@alhamra.com", password: "admin@321", role: "admin", createdAt: new Date().toISOString() },
-    { email: "user@alhamra.com",  password: "user@123",  role: "user",  createdAt: new Date().toISOString() },
-  ];
-}
-
-function isMockMode() {
-  const pk = process.env.GOOGLE_PRIVATE_KEY || "";
-  return !pk || pk.includes("Your\\nSuper") || pk.includes("Your\nSuper");
-}
+// Removed in-memory mock store and isMockMode because we strictly use the DB now.
 
 /** Return all users (without exposing passwords to the caller — handled at API layer) */
 export async function getAllUsers(): Promise<User[]> {
-  if (isMockMode()) {
-    return [...globalForUsers.mockUsers];
-  }
 
   try {
     const res = await sheets.spreadsheets.values.get({
@@ -719,11 +697,6 @@ export async function createUser(user: Omit<User, "createdAt">): Promise<void> {
   const createdAt = new Date().toISOString();
   const newUser: User = { ...user, createdAt };
 
-  if (isMockMode()) {
-    globalForUsers.mockUsers.push(newUser);
-    return;
-  }
-
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: USERS_SHEET_RANGE,
@@ -740,13 +713,6 @@ export async function updateUser(
   email: string,
   updates: Partial<Pick<User, "password" | "role">>
 ): Promise<void> {
-  if (isMockMode()) {
-    const idx = globalForUsers.mockUsers.findIndex((u) => u.email === email);
-    if (idx !== -1) {
-      globalForUsers.mockUsers[idx] = { ...globalForUsers.mockUsers[idx], ...updates };
-    }
-    return;
-  }
 
   // Find the row number in the sheet
   const idRes = await sheets.spreadsheets.values.get({
@@ -782,10 +748,6 @@ export async function updateUser(
 
 /** Delete (clear) a user row by email */
 export async function deleteUser(email: string): Promise<void> {
-  if (isMockMode()) {
-    globalForUsers.mockUsers = globalForUsers.mockUsers.filter((u) => u.email !== email);
-    return;
-  }
 
   const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
