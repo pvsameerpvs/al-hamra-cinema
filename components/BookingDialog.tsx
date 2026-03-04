@@ -67,7 +67,7 @@ export function BookingDialog({
     month: "long",
     day: "numeric",
   });
-  const showTimesList = ["10:00 AM", "01:00 PM", "04:00 PM", "07:00 PM", "10:00 PM"];
+
 
   const handleBooking = async () => {
     if (!name.trim() || !phone.trim() || !email.trim() || !showTime) {

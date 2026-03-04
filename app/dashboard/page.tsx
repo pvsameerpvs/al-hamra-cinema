@@ -10,7 +10,6 @@ import {
   Loader2,
   Ticket,
   RefreshCw,
-  LayoutDashboard,
   Bell,
   ChevronRight,
   Filter,

@@ -218,7 +218,7 @@ export default function ManageShowsPage() {
                     if (!showTime) return "";
                     const match = showTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
                     if (!match) return showTime;
-                    let [, h, m, ampm] = match;
+                    const [, h, m, ampm] = match;
                     let hours = parseInt(h, 10);
                     if (ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
                     if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;

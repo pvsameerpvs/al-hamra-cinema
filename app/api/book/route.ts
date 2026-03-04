@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  updateSeatStatus,
   createBookingRecord,
   createRevenueLog,
 } from "@/lib/sheetHelpers";

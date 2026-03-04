@@ -1,4 +1,3 @@
-import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Film, Clock, Ticket } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";

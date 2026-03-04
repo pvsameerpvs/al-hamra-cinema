@@ -89,7 +89,7 @@ export async function fetchAllSeats(time?: string): Promise<Seat[]> {
     const rows = response.data.values;
     if (!rows || rows.length === 0) return [];
 
-    let bookedSeats = new Set<string>();
+    const bookedSeats = new Set<string>();
 
     if (time) {
       try {
@@ -280,7 +280,7 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
 
     // For server-side filtering
     let targetShowTime: string | null = null;
-    let validBookingIds = new Set<string>();
+    const validBookingIds = new Set<string>();
 
     if (movieId) {
       const allShows = await fetchAllShows();
@@ -292,7 +292,7 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
 
     // Process Bookings first so we know which IDs belong to the target show
     for (const row of bookingRows) {
-      const bookingId = row[0] || ""; // Assuming ID is A column if B is seatIds, let's verify: Wait, in getDashboardStats earlier:
+      // Assuming ID is A column if B is seatIds, let's verify: Wait, in getDashboardStats earlier:
       // A: bookingId, B: seatIds, C: name, D: phone, E: email, F: amount, G: status, H: createdAt
       // Let's rely on B: seatIds to check the time
       const seatIdsStr = row[1] || ""; // B column (seatIds) in bookingRows

@@ -1,8 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
-import { MoveLeft, Film, Clock, Ticket } from "lucide-react";
+import { MoveLeft, Film, Ticket } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
-import { formatTime12Hour } from "@/lib/utils";
 
 export const revalidate = 0;
 
