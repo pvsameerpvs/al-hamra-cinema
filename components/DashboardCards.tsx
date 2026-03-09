@@ -15,7 +15,7 @@ const cards = [
   {
     key: "totalBookings" as keyof DashboardStats,
     label: "Total Bookings",
-    sub: (stats: DashboardStats) => `${stats.totalTicketsSold.toLocaleString()} total tickets`,
+    sub: (stats: DashboardStats) => `${stats.totalTicketsSold.toLocaleString()} tickets sold`,
     icon: Ticket,
     color: "bg-violet-50",
     iconColor: "text-violet-500",
@@ -56,14 +56,14 @@ const cards = [
 
 export function DashboardCards({ stats }: { stats: DashboardStats }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 w-full">
+    <div className="grid w-full auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const value = stats[card.key] as number;
         return (
           <div
             key={card.key}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow"
+            className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex items-start justify-between">
               <div className={`w-10 h-10 rounded-xl ${card.color} flex items-center justify-center`}>
@@ -74,12 +74,15 @@ export function DashboardCards({ stats }: { stats: DashboardStats }) {
                 Live
               </span>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800 tabular-nums">
+
+            <div className="mt-5 flex flex-1 flex-col justify-end">
+              <p className="text-[clamp(22px,2.2vw,30px)] font-bold leading-none text-slate-900 tabular-nums">
                 {card.format(value)}
               </p>
-              <p className="text-sm font-medium text-slate-500 mt-1">{card.label}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{card.sub(stats)}</p>
+              <p className="mt-3 text-sm font-semibold text-slate-700">{card.label}</p>
+              <p className="mt-1 text-xs font-medium leading-snug text-slate-500">
+                {card.sub(stats)}
+              </p>
             </div>
           </div>
         );
