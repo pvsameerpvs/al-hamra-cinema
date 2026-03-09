@@ -18,6 +18,8 @@ export interface Booking {
   amount: number;
   paymentStatus: string;
   createdAt: string;
+  /** Show date (YYYY-MM-DD). Used for pre-booking / daily seat availability. */
+  showDate?: string;
 }
 
 export interface RevenueLog {

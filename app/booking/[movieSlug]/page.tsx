@@ -3,12 +3,31 @@ import { MoveLeft, Film, Clock } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { formatTime12Hour } from "@/lib/utils";
+import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
 
-export default async function MovieShowtimesPage({ params }: { params: { movieSlug: string } }) {
+export default async function MovieShowtimesPage({
+  params,
+  searchParams,
+}: {
+  params: { movieSlug: string };
+  searchParams?: { date?: string };
+}) {
   const allShows = await fetchAllShows();
   const activeShows = allShows.filter(s => s.isActive);
+
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const bookingDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
+    ? searchParams.date
+    : todayIso;
+  const bookingDateLabel = new Date(`${bookingDateIso}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   // Find the exact movie title that matches this slug
   // The slug was created using: movieTitle.replace(/\s+/g, '-').toLowerCase()
@@ -18,13 +37,6 @@ export default async function MovieShowtimesPage({ params }: { params: { movieSl
 
   const movieTitle = matchingShows.length > 0 ? matchingShows[0].movieTitle : params.movieSlug.replace(/-/g, ' ').toUpperCase();
 
-  const todayDate = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
       <Sidebar />
@@ -33,7 +45,7 @@ export default async function MovieShowtimesPage({ params }: { params: { movieSl
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           {/* Back */}
           <Link
-            href="/booking"
+            href={`/booking?date=${encodeURIComponent(bookingDateIso)}`}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl text-sm font-medium transition-colors w-fit shadow-sm mb-8"
           >
             <MoveLeft className="w-4 h-4" />
@@ -49,10 +61,14 @@ export default async function MovieShowtimesPage({ params }: { params: { movieSl
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">{movieTitle}</h1>
                 <p className="text-sm text-slate-400 mt-0.5">
-                  Available show times for today: <strong className="text-slate-600">{todayDate}</strong>
+                  Booking date: <strong className="text-slate-600">{bookingDateLabel}</strong>
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="mb-8">
+            <BookingDateBar label="Show date" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -60,7 +76,7 @@ export default async function MovieShowtimesPage({ params }: { params: { movieSl
               return (
                 <Link
                   key={show.id}
-                  href={`/booking/${params.movieSlug}/${show.id}`}
+                  href={`/booking/${params.movieSlug}/${show.id}?date=${encodeURIComponent(bookingDateIso)}`}
                   className="group flex flex-col items-center justify-center p-8 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-300 relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-5 transition-opacity">

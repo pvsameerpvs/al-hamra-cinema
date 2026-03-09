@@ -10,8 +10,18 @@ import { Loader2 } from "lucide-react";
 
 const seatCache: Record<string, { data: Seat[], timestamp: number }> = {};
 
-export function SeatGrid({ showTime, showId }: { showTime?: string, showId?: string }) {
-  const cacheKey = showId || showTime || "all";
+export function SeatGrid({
+  showTime,
+  showId,
+  showDate,
+  movieTitle,
+}: {
+  showTime?: string;
+  showId?: string;
+  showDate?: string;
+  movieTitle?: string;
+}) {
+  const cacheKey = `${showId || showTime || "all"}::${showDate || "today"}`;
   const cachedData = seatCache[cacheKey];
   const [seats, setSeats] = useState<Seat[]>(cachedData ? cachedData.data : []);
   const [loading, setLoading] = useState(!cachedData);
@@ -22,9 +32,12 @@ export function SeatGrid({ showTime, showId }: { showTime?: string, showId?: str
   const fetchSeats = useCallback(async (showLoader = false) => {
     if (showLoader && !seatCache[cacheKey]) setLoading(true);
     try {
-      const url = showId 
-        ? `/api/seats?showId=${encodeURIComponent(showId)}` 
-        : showTime ? `/api/seats?time=${encodeURIComponent(showTime)}` : "/api/seats";
+      const dateParam = showDate ? `&date=${encodeURIComponent(showDate)}` : "";
+      const url = showId
+        ? `/api/seats?showId=${encodeURIComponent(showId)}${dateParam}`
+        : showTime
+          ? `/api/seats?time=${encodeURIComponent(showTime)}${dateParam}`
+          : "/api/seats";
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch");
       const data: Seat[] = await res.json();
@@ -43,7 +56,7 @@ export function SeatGrid({ showTime, showId }: { showTime?: string, showId?: str
     } finally {
       setLoading(false);
     }
-  }, [showTime, showId, cacheKey, toast]);
+  }, [showTime, showId, showDate, cacheKey, toast]);
 
   useEffect(() => {
     fetchSeats(true);
@@ -250,6 +263,8 @@ export function SeatGrid({ showTime, showId }: { showTime?: string, showId?: str
         onBookingComplete={handleBookingComplete}
         showTime={showTime || ""}
         showId={showId || ""}
+        showDate={showDate}
+        movieTitle={movieTitle}
       />
     </div>
   );

@@ -82,11 +82,11 @@ function DailyReportContent() {
     new Date().toISOString().split("T")[0]
   );
 
-  const fetchReportData = async () => {
+      const fetchReportData = async () => {
     setLoading(true);
     try {
-      const queryParams = new URLSearchParams();
-      if (selectedDate) queryParams.set("filterDate", selectedDate);
+        const queryParams = new URLSearchParams();
+        if (selectedDate) queryParams.set("showDate", selectedDate);
 
       const res = await fetch(`/api/bookings?${queryParams.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load data");

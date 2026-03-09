@@ -2,12 +2,29 @@ import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Film, Ticket } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
+import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
 
-export default async function BookingSelectionPage() {
+export default async function BookingSelectionPage({
+  searchParams,
+}: {
+  searchParams?: { date?: string };
+}) {
   const allShows = await fetchAllShows();
   const activeShows = allShows.filter(s => s.isActive);
+
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const bookingDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
+    ? searchParams.date
+    : todayIso;
+  const bookingDateLabel = new Date(`${bookingDateIso}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   // Get unique movies
   const uniqueMoviesMap = new Map<string, typeof activeShows[0]>();
@@ -17,13 +34,6 @@ export default async function BookingSelectionPage() {
     }
   }
   const uniqueMovies = Array.from(uniqueMoviesMap.values());
-
-  const todayDate = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
@@ -49,10 +59,14 @@ export default async function BookingSelectionPage() {
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">Select a Movie</h1>
                 <p className="text-sm text-slate-400 mt-0.5">
-                  Bookings are open for today: <strong className="text-slate-600">{todayDate}</strong>
+                  Booking date: <strong className="text-slate-600">{bookingDateLabel}</strong>
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="mb-8">
+            <BookingDateBar />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -61,7 +75,7 @@ export default async function BookingSelectionPage() {
               return (
                 <Link
                   key={movieSlug}
-                  href={`/booking/${movieSlug}`}
+                  href={`/booking/${movieSlug}?date=${encodeURIComponent(bookingDateIso)}`}
                   className="group flex flex-col items-center justify-center p-8 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-300 relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-5 transition-opacity">

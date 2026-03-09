@@ -54,14 +54,16 @@ function BookingsHistoryContent() {
   const handleExportCSV = () => {
     if (filteredBookings.length === 0) return;
 
-    const headers = ["Customer Name", "Phone", "Email", "Movie Title", "Show Time", "Seats", "Total Amount (AED)", "Payment Status", "Booking Date"];
+    const headers = ["Customer Name", "Phone", "Email", "Movie Title", "Show Time", "Show Date", "Seats", "Total Amount (AED)", "Payment Status", "Booked At"];
     
     const csvRows = filteredBookings.map(b => {
       const cleanIds = (b.seatIds || "").replace(/\[.*?\]\s*/, "").split(", ").filter(s => s.trim() !== "");
       const timeMatch = (b.seatIds || "").match(/\[(.*?)\]/);
-      const showTime = timeMatch ? timeMatch[1] : "N/A";
-      const movieMatch = shows.find(s => s.showTime === showTime);
-      const movieTitle = movieMatch ? movieMatch.movieTitle : "Unknown Movie";
+      const bracketValue = timeMatch ? timeMatch[1] : "N/A";
+      const showMatch = shows.find(s => s.id === bracketValue) || shows.find(s => s.showTime === bracketValue);
+      const showTime = showMatch ? showMatch.showTime : bracketValue;
+      const movieTitle = showMatch ? showMatch.movieTitle : "Unknown Movie";
+      const showDate = b.showDate || "";
 
       return [
         `"${b.customerName || ""}"`,
@@ -69,6 +71,7 @@ function BookingsHistoryContent() {
         `"${b.email || ""}"`,
         `"${movieTitle}"`,
         `"${showTime}"`,
+        `"${showDate}"`,
         `"${cleanIds.join(", ")}"`,
         b.amount || 0,
         `"${b.paymentStatus || ""}"`,

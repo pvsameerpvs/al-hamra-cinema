@@ -25,6 +25,8 @@ interface BookingDialogProps {
   onBookingComplete: (seatIds: string[]) => void;
   showTime: string;
   showId?: string;
+  showDate?: string;
+  movieTitle?: string;
 }
 
 export function BookingDialog({
@@ -34,6 +36,8 @@ export function BookingDialog({
   onBookingComplete,
   showTime,
   showId,
+  showDate,
+  movieTitle,
 }: BookingDialogProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -61,7 +65,10 @@ export function BookingDialog({
   const totalAmount = activeSeats.reduce((sum, s) => sum + s.price, 0);
   const subtotal = ((totalAmount * 100) / 105).toFixed(2);
   const vat = ((totalAmount * 5) / 105).toFixed(2);
-  const todayDate = new Date().toLocaleDateString("en-US", {
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const bookingShowDate = showDate && isoDatePattern.test(showDate) ? showDate : todayIso;
+  const showDateLabel = new Date(`${bookingShowDate}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "short",
     year: "numeric",
     month: "long",
@@ -92,6 +99,7 @@ export function BookingDialog({
           amount: totalAmount,
           showTime,
           showId,
+          showDate: bookingShowDate,
           paymentMethod,
         }),
       });
@@ -104,7 +112,7 @@ export function BookingDialog({
 
       toast({
         title: "Booking Confirmed! 🎉",
-        description: `Your seats ${seats.map(s => s.seat_id).join(", ")} have been successfully booked.`,
+        description: `Your seats ${seats.map(s => s.seat_id).join(", ")} are booked for ${showDateLabel}.`,
       });
 
       setBookedSeats(seats);
@@ -170,8 +178,8 @@ export function BookingDialog({
               </DialogHeader>
               <div className="grid gap-5 py-4 max-h-[70vh] overflow-y-auto px-1">
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs text-center font-medium shadow-sm">
-                  ⚠️ Bookings are only valid for today:<br />
-                  <strong className="text-amber-900">{todayDate} - {formatTime12Hour(showTime)}</strong>
+                  ⚠️ Ticket is valid for:<br />
+                  <strong className="text-amber-900">{showDateLabel} - {formatTime12Hour(showTime)}</strong>
                 </div>
 
                 <div className="grid gap-2">
@@ -307,8 +315,9 @@ export function BookingDialog({
       {/* Hidden Thermal Print Layout (Mounted outside dialog overflow!) */}
       {isSuccess && mounted && typeof document !== 'undefined' && createPortal(
         <ReceiptTicket 
-          movieTitle="Al Hamra Cinema Show"
+          movieTitle={movieTitle || "Al Hamra Cinema Show"}
           showTime={formatTime12Hour(showTime)}
+          showDate={bookingShowDate}
           customerName={name}
           customerPhone={phone}
           customerEmail={email}

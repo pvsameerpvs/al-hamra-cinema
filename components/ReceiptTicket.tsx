@@ -4,6 +4,8 @@ import { Seat } from "@/lib/types";
 interface ReceiptTicketProps {
   movieTitle: string;
   showTime: string;
+  /** Show date (YYYY-MM-DD) */
+  showDate?: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -15,6 +17,7 @@ interface ReceiptTicketProps {
 export function ReceiptTicket({
   movieTitle,
   showTime,
+  showDate,
   customerName,
   customerPhone,
   customerEmail,
@@ -29,6 +32,14 @@ export function ReceiptTicket({
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  const showDateLabel = showDate
+    ? new Date(`${showDate}T00:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "";
 
   return (
     <div id="receipt-root" className="hidden print:block bg-white text-black font-mono w-[72mm] py-4 px-2 mx-auto text-sm leading-tight border-none shadow-none text-left">
@@ -71,6 +82,12 @@ export function ReceiptTicket({
           <span>Show Time:</span>
           <span className="font-bold text-right">{showTime}</span>
         </div>
+        {showDateLabel ? (
+          <div className="flex justify-between leading-tight">
+            <span>Show Date:</span>
+            <span className="font-bold text-right">{showDateLabel}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between leading-tight">
           <span>Date/Time:</span>
           <span className="text-right">{currentDate}</span>

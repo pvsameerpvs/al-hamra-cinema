@@ -91,6 +91,18 @@ export function BookingsTable({ bookings, shows, loading }: BookingsTableProps) 
                       <div className="flex items-center gap-2 text-slate-500 text-xs">
                         <span className="text-slate-600 font-medium">Time: {showTime}</span>
                       </div>
+                      {booking.showDate ? (
+                        <div className="flex items-center gap-2 text-slate-500 text-xs">
+                          <span className="text-slate-600 font-medium">
+                            Show Date:{" "}
+                            {new Date(`${booking.showDate}T00:00:00`).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="flex items-start gap-2 text-slate-500 text-xs mt-1">
                         <Ticket className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                         <span className="max-w-[180px] leading-tight break-words">{cleanIds.join(", ")}</span>

@@ -9,8 +9,9 @@ export async function GET(req: Request) {
     const movieId = searchParams.get("movieId") || undefined;
     const filterMonth = searchParams.get("filterMonth") || undefined;
     const filterDate = searchParams.get("filterDate") || undefined;
+    const showDate = searchParams.get("showDate") || undefined;
 
-    const bookings = await fetchAllBookings(movieId, filterMonth, filterDate);
+    const bookings = await fetchAllBookings(movieId, filterMonth, filterDate, showDate);
     const shows = await fetchAllShows();
     return NextResponse.json({ bookings, shows });
   } catch (error: unknown) {

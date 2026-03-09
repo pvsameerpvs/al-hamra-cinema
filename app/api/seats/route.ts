@@ -8,12 +8,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const time = searchParams.get('time');
     const showId = searchParams.get('showId');
+    const date = searchParams.get('date') || undefined;
 
     if (!time && !showId) {
       return NextResponse.json({ error: "Time or showId is required" }, { status: 400 });
     }
 
-    const seats = await fetchAllSeats(showId || time || "");
+    const seats = await fetchAllSeats(showId || time || "", date);
     return NextResponse.json(seats);
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : "Unknown error";

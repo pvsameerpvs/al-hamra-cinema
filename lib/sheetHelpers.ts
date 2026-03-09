@@ -3,11 +3,11 @@ import { Seat, SeatStatus, Show, Booking, User, UserRole } from "./types";
 
 interface MockBooking {
   seatId: string;
-  time: string;
-  date: string;
+  showKey: string;
+  showDate: string;
 }
 
-const globalForBookings = global as unknown as { mockBookings: MockBooking[], mockShows: Show[] };
+const globalForBookings = global as unknown as { mockBookings: MockBooking[]; mockShows: Show[] };
 if (!globalForBookings.mockBookings) globalForBookings.mockBookings = [];
 if (!globalForBookings.mockShows) {
   globalForBookings.mockShows = [
@@ -19,8 +19,10 @@ if (!globalForBookings.mockShows) {
   ];
 }
 
-export async function fetchAllSeats(time?: string): Promise<Seat[]> {
+export async function fetchAllSeats(showKey?: string, showDate?: string): Promise<Seat[]> {
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const today = new Date().toISOString().split("T")[0];
+  const targetDate = showDate && isoDatePattern.test(showDate) ? showDate : today;
   // Fallback to mock data if the private key is not configured or using the default dummy value
   const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
   if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
@@ -65,11 +67,11 @@ export async function fetchAllSeats(time?: string): Promise<Seat[]> {
       }
     });
 
-    // Derive bookings for the current time
-    if (time) {
+    // Derive bookings for the current showKey + date
+    if (showKey) {
       mockSeats.forEach((seat) => {
         const isBooked = globalForBookings.mockBookings.some(
-          (b) => b.seatId === seat.seat_id && b.time === time && b.date === today
+          (b) => b.seatId === seat.seat_id && b.showKey === showKey && b.showDate === targetDate
         );
         if (isBooked) {
           seat.status = "Booked";
@@ -91,22 +93,26 @@ export async function fetchAllSeats(time?: string): Promise<Seat[]> {
 
     const bookedSeats = new Set<string>();
 
-    if (time) {
+    if (showKey) {
       try {
         const bookingsRes = await sheets.spreadsheets.values.get({
           spreadsheetId: SPREADSHEET_ID,
-          range: "bookings!A:H",
+          range: "bookings!A:I",
         });
         const bookingRows = bookingsRes.data.values || [];
         for (const r of bookingRows) {
           const seatIdsCol = r[1] || "";
           const createdAtStr = r[7] || "";
-          const rowDate = createdAtStr.split("T")[0];
-          
-          if (rowDate === today && seatIdsCol.startsWith(`[${time}]`)) {
-            const cleanIds = seatIdsCol.replace(`[${time}] `, "").split(", ");
-            cleanIds.forEach((s: string) => bookedSeats.add(s.trim()));
-          }
+          const explicitShowDate = r[8] || "";
+          const rowShowDate = explicitShowDate || (createdAtStr ? createdAtStr.split("T")[0] : "");
+
+          const bracketMatch = seatIdsCol.match(/\[(.*?)\]/);
+          const bracketValue = bracketMatch ? bracketMatch[1] : "";
+          if (!bracketValue || bracketValue !== showKey) continue;
+          if (!rowShowDate || rowShowDate !== targetDate) continue;
+
+          const cleanIds = seatIdsCol.replace(/\[.*?\]\s*/, "").split(", ").filter((s: string) => s.trim() !== "");
+          cleanIds.forEach((s: string) => bookedSeats.add(s.trim()));
         }
       } catch (e) {
         console.warn("Failed to fetch bookings for dynamic seat status calculation:", e);
@@ -169,26 +175,33 @@ export async function createBookingRecord(
   phone: string,
   email: string,
   amount: number,
-  paymentStatus: string
+  paymentStatus: string,
+  showDate?: string
 ) {
   const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
   if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
     console.warn(`Mock: createBookingRecord(${bookingId}, ${seatIds}) passed to memory.`);
+    const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
     const today = new Date().toISOString().split("T")[0];
-    const timeMatch = seatIds.match(/\[(.*?)\]/);
-    const time = timeMatch ? timeMatch[1] : "";
-    const cleanly = seatIds.replace(/\[.*?\]\s*/, "").split(", ");
+    const targetShowDate = showDate && isoDatePattern.test(showDate) ? showDate : today;
+
+    const bracketMatch = seatIds.match(/\[(.*?)\]/);
+    const showKey = bracketMatch ? bracketMatch[1] : "";
+    const cleanly = seatIds.replace(/\[.*?\]\s*/, "").split(", ").filter((s) => s.trim() !== "");
     cleanly.forEach((s) => {
-      globalForBookings.mockBookings.push({ seatId: s.trim(), time, date: today });
+      globalForBookings.mockBookings.push({ seatId: s.trim(), showKey, showDate: targetShowDate });
     });
     return;
   }
 
   const createdAt = new Date().toISOString();
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const today = new Date().toISOString().split("T")[0];
+  const targetShowDate = showDate && isoDatePattern.test(showDate) ? showDate : today;
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: "bookings!A:H",
+    range: "bookings!A:I",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
@@ -202,6 +215,7 @@ export async function createBookingRecord(
           amount,
           paymentStatus,
           createdAt,
+          targetShowDate,
         ],
       ],
     },
@@ -237,8 +251,10 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
     console.warn("Mock: getDashboardStats returning mock data.");
     return {
       totalTicketsSold: 120,
+      totalBookings: 55,
       totalRevenue: 2800,
       monthlyTicketsSold: 45,
+      monthlyBookings: 18,
       monthlyRevenue: 950,
       chartData: [
         { name: "January 2026", revenue: 800 },
@@ -256,7 +272,7 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
     
     const bookingsRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: "bookings!B2:H",
+      range: "bookings!A2:I",
     });
 
     const rows = revenueRes.data.values || [];
@@ -291,11 +307,11 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
       }
     }
 
-    // Process Bookings first so we know which IDs belong to the target show
+    // Process bookings first so we know which IDs belong to the target show
     for (const row of bookingRows) {
-      const seatIdsStr = row[1] || ""; // B column (seatIds) in bookingRows
-      const bId = row[0] || ""; // A column 
-      const createdAtStr = row[7] || ""; // H column (createdAt)
+      const bId = row[0] || ""; // A: bookingId
+      const seatIdsStr = row[1] || ""; // B: seatIds (includes [showKey])
+      const createdAtStr = row[7] || ""; // H: createdAt
       
       const timeMatch = seatIdsStr.match(/\[(.*?)\]/);
       const rowIdentifier = timeMatch ? timeMatch[1] : null;
@@ -427,49 +443,71 @@ export async function getDashboardStats(movieId?: string, filterMonth?: string, 
 // Bookings Management
 // -------------------------------------------------------------
 
-export async function fetchAllBookings(movieId?: string, filterMonth?: string, filterDate?: string): Promise<Booking[]> {
+export async function fetchAllBookings(
+  movieId?: string,
+  filterMonth?: string,
+  filterDate?: string,
+  filterShowDate?: string
+): Promise<Booking[]> {
   const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
   if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
     return globalForBookings.mockBookings.map((mb, i) => ({
       id: `mock-${i}`,
-      seatIds: `[${mb.time}] ${mb.seatId}`,
+      seatIds: `[${mb.showKey}] ${mb.seatId}`,
       customerName: "Mock Customer",
       phone: "+971500000000",
       email: "mock@example.com",
       amount: 35,
       paymentStatus: "Paid",
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      showDate: mb.showDate,
     })).reverse();
   }
 
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: "bookings!A2:H",
+      range: "bookings!A2:I",
     });
 
     const rows = response.data.values;
     if (!rows || rows.length === 0) return [];
 
-    let targetShowTime: string | null = null;
+    let allowedBracketValues: Set<string> | null = null;
     if (movieId) {
       const allShows = await fetchAllShows();
-      const targetShow = allShows.find(s => s.id === movieId);
-      if (targetShow) targetShowTime = targetShow.showTime;
+      const byId = allShows.find((s) => s.id === movieId);
+
+      if (byId) {
+        allowedBracketValues = new Set([byId.id, byId.showTime]);
+      } else {
+        // Backward-compatible: treat movieId as a movie title
+        const byTitle = allShows.filter((s) => s.movieTitle === movieId);
+        allowedBracketValues = new Set(byTitle.flatMap((s) => [s.id, s.showTime]));
+      }
     }
 
     const bookings: Booking[] = [];
     
     for (const row of rows) {
       const seatIds = row[1] || "";
-      
-      if (targetShowTime) {
-        const timeMatch = seatIds.match(/\[(.*?)\]/);
-        const rowShowTime = timeMatch ? timeMatch[1] : null;
-        if (rowShowTime !== targetShowTime) continue;
+
+      const bracketMatch = seatIds.match(/\[(.*?)\]/);
+      const bracketValue = bracketMatch ? bracketMatch[1] : "";
+
+      if (allowedBracketValues && (!bracketValue || !allowedBracketValues.has(bracketValue))) {
+        continue;
       }
 
       const createdAtStr = row[7] || "";
+      const explicitShowDate = row[8] || "";
+      const computedShowDate = explicitShowDate || (createdAtStr ? createdAtStr.split("T")[0] : "");
+
+      // Filter by showDate (pre-booking aware)
+      if (filterShowDate && computedShowDate !== filterShowDate) {
+        continue;
+      }
+
       if (filterMonth && filterMonth !== "all" || filterDate) {
          if (!createdAtStr) continue;
          const dateObj = new Date(createdAtStr);
@@ -499,6 +537,7 @@ export async function fetchAllBookings(movieId?: string, filterMonth?: string, f
         amount: Number(row[5]) || 0,
         paymentStatus: row[6] || "",
         createdAt: row[7] || "",
+        showDate: computedShowDate || undefined,
       });
     }
 
@@ -767,5 +806,3 @@ export async function deleteUser(email: string): Promise<void> {
 
 /** Export the header constant so the init route can use it */
 export { USERS_HEADER };
-
-

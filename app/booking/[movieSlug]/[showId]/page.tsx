@@ -7,7 +7,13 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 
 export const revalidate = 0;
 
-export default async function ShowTimeBookingPage({ params }: { params: { movieSlug: string, showId: string } }) {
+export default async function ShowTimeBookingPage({
+  params,
+  searchParams,
+}: {
+  params: { movieSlug: string; showId: string };
+  searchParams?: { date?: string };
+}) {
   const allShows = await fetchAllShows();
   const activeShows = allShows.filter(s => s.isActive);
   
@@ -29,6 +35,18 @@ export default async function ShowTimeBookingPage({ params }: { params: { movieS
     );
   }
 
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
+    ? searchParams.date
+    : todayIso;
+  const showDateLabel = new Date(`${showDateIso}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans pb-20">
       <HomeHeader />
@@ -37,7 +55,7 @@ export default async function ShowTimeBookingPage({ params }: { params: { movieS
         <section className="mx-auto max-w-5xl px-4 pb-6 md:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <Link
-              href={`/booking/${params.movieSlug}`}
+              href={`/booking/${params.movieSlug}?date=${encodeURIComponent(showDateIso)}`}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl text-sm font-medium transition-colors w-fit shadow-sm"
             >
               <MoveLeft className="w-4 h-4" />
@@ -51,7 +69,7 @@ export default async function ShowTimeBookingPage({ params }: { params: { movieS
               {show.movieTitle} at <span className="text-indigo-600">{formatTime12Hour(show.showTime)}</span>
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
-              Select seats for this specific show.
+              Select seats for <strong className="text-slate-700">{showDateLabel}</strong>.
             </p>
           </div>
         </section>
@@ -60,7 +78,7 @@ export default async function ShowTimeBookingPage({ params }: { params: { movieS
           id="seats"
           className="mx-auto max-w-5xl px-4 md:px-6"
         >
-          <SeatGrid showId={show.id} showTime={show.showTime} />
+          <SeatGrid showId={show.id} showTime={show.showTime} showDate={showDateIso} movieTitle={show.movieTitle} />
         </section>
       </div>
     </div>

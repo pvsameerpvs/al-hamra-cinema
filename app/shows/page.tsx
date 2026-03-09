@@ -2,14 +2,25 @@ import { MoveLeft, Film, Clock, Ticket } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { formatTime12Hour } from "@/lib/utils";
+import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
 
-export default async function PublicShowsPage() {
+export default async function PublicShowsPage({
+  searchParams,
+}: {
+  searchParams?: { date?: string };
+}) {
   const allShows = await fetchAllShows();
   const activeShows = allShows.filter(s => s.isActive);
 
-  const todayDate = new Date().toLocaleDateString("en-US", {
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
+    ? searchParams.date
+    : todayIso;
+
+  const todayDate = new Date(`${showDateIso}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -37,19 +48,23 @@ export default async function PublicShowsPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-800">Available Shows</h1>
               <p className="text-slate-500 mt-1">
-                Bookings are open for today: <strong className="text-slate-700">{todayDate}</strong>
+                Show date: <strong className="text-slate-700">{todayDate}</strong>
               </p>
             </div>
           </div>
         </div>
 
+        <div className="mb-10">
+          <BookingDateBar label="Show date" />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {activeShows.length > 0 ? activeShows.map((show) => {
-            const slug = show.showTime.replace(/\s+/g, '-');
+            const movieSlug = show.movieTitle.replace(/\s+/g, '-').toLowerCase();
             return (
               <Link
                 key={show.id}
-                href={`/booking/${slug}`}
+                href={`/booking/${movieSlug}/${show.id}?date=${encodeURIComponent(showDateIso)}`}
                 className="group flex flex-col p-6 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-100 hover:border-indigo-200 transition-all duration-300 relative overflow-hidden h-full"
               >
                 <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
