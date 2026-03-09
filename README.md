@@ -32,9 +32,10 @@ npm install
 1. Create a new Google Sheet.
 2. Share the Google Sheet with the **Service Account Email** you created (giving it `Editor` access).
 3. The Spreadsheet ID is in the URL: `https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit`
-4. Create the following 3 sheets EXACTLY as named (case-sensitive):
+4. Create the following sheets EXACTLY as named (case-sensitive):
    - `seats` (A1=seat_id, B1=section, C1=row, D1=seat_number, E1=status, F1=price)
    - `bookings` (A1=booking_id, B1=seat_ids, C1=customer_name, D1=phone, E1=email, F1=amount, G1=payment_status, H1=created_at, I1=show_date)
+   - `reservations` (A1=reservation_id, B1=show_id, C1=show_date, D1=seat_ids, E1=customer_name, F1=phone, G1=email, H1=status, I1=expires_at, J1=created_at)
    - `revenue_logs` (A1=booking_id, B1=amount, C1=month, D1=date)
 
 ### 4. Setup Environment Variables

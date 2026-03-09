@@ -1,7 +1,7 @@
 import { SeatGrid } from "@/components/SeatGrid";
 import { MoveLeft } from "lucide-react";
 import Link from "next/link";
-import { formatTime12Hour } from "@/lib/utils";
+import { formatTime12Hour, isShowStartInPastDubai } from "@/lib/utils";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { HomeHeader } from "@/components/home/HomeHeader";
 
@@ -46,6 +46,27 @@ export default async function ShowTimeBookingPage({
     month: "long",
     day: "numeric",
   });
+
+  const isPastDate = showDateIso < todayIso;
+  const isPastTime = showDateIso === todayIso && isShowStartInPastDubai(showDateIso, show.showTime);
+  const bookingClosed = isPastDate || isPastTime;
+
+  if (bookingClosed) {
+    return (
+      <div className="min-h-screen bg-[#f7f8fc] font-sans">
+        <HomeHeader />
+        <div className="flex flex-col items-center justify-center p-16 pt-32 text-center">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Booking Closed</h2>
+          <p className="text-slate-500 mb-6">
+            This show time has already passed for <strong className="text-slate-700">{showDateLabel}</strong>.
+          </p>
+          <Link href={`/booking/${params.movieSlug}?date=${encodeURIComponent(showDateIso)}`} className="text-indigo-600 font-medium">
+            &larr; Back to shows
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans pb-20">

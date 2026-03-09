@@ -2,7 +2,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Film, Clock } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
-import { formatTime12Hour } from "@/lib/utils";
+import { formatTime12Hour, isShowStartInPastDubai } from "@/lib/utils";
 import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
@@ -73,12 +73,39 @@ export default async function MovieShowtimesPage({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {matchingShows.length > 0 ? matchingShows.map((show) => {
+              const isPastDate = bookingDateIso < todayIso;
+              const isPastTime = bookingDateIso === todayIso && isShowStartInPastDubai(bookingDateIso, show.showTime);
+              const disabled = isPastDate || isPastTime;
+
+              const cardClass = `group flex flex-col items-center justify-center p-8 bg-white border border-slate-100 rounded-2xl shadow-sm transition-all duration-300 relative overflow-hidden ${
+                disabled
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:shadow-md hover:border-indigo-100"
+              }`;
+
               return (
-                <Link
-                  key={show.id}
-                  href={`/booking/${params.movieSlug}/${show.id}?date=${encodeURIComponent(bookingDateIso)}`}
-                  className="group flex flex-col items-center justify-center p-8 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-300 relative overflow-hidden"
-                >
+                disabled ? (
+                  <div key={show.id} className={cardClass} aria-disabled="true">
+                    <div className="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border border-slate-200 bg-slate-50 text-slate-500">
+                      Closed
+                    </div>
+                    <div className="absolute top-0 right-0 p-3 opacity-5">
+                      <Clock className="w-24 h-24 text-slate-400" />
+                    </div>
+                    <div className="w-16 h-16 mb-4 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                      <Clock className="w-8 h-8" />
+                    </div>
+                    <span className="text-2xl font-bold mb-2 text-slate-600 text-center">
+                      {formatTime12Hour(show.showTime)}
+                    </span>
+                    <span className="text-slate-500 font-medium text-sm text-center px-4">Booking disabled</span>
+                  </div>
+                ) : (
+                  <Link
+                    key={show.id}
+                    href={`/booking/${params.movieSlug}/${show.id}?date=${encodeURIComponent(bookingDateIso)}`}
+                    className={cardClass}
+                  >
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-5 transition-opacity">
                     <Clock className="w-24 h-24 text-indigo-500" />
                   </div>
@@ -87,7 +114,8 @@ export default async function MovieShowtimesPage({
                   </div>
                   <span className="text-2xl font-bold mb-2 text-slate-800 text-center">{formatTime12Hour(show.showTime)}</span>
                   <span className="text-indigo-600 font-medium text-sm text-center px-4">Book Seats &rarr;</span>
-                </Link>
+                  </Link>
+                )
               )
             }) : (
               <div className="col-span-1 sm:col-span-2 lg:col-span-3 text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm">

@@ -3,15 +3,23 @@ import {
   createBookingRecord,
   createRevenueLog,
 } from "@/lib/sheetHelpers";
+import { isShowStartInPastDubai } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: Request) {
   try {
-    const { seatIds, customerName, phone, email, amount, showId, paymentMethod, showDate } = await req.json();
+    const { seatIds, customerName, phone, email, amount, showId, paymentMethod, showDate, showTime } = await req.json();
 
-    if (!seatIds || !Array.isArray(seatIds) || seatIds.length === 0 || !customerName || !phone || !email || amount === undefined || !showId) {
+    if (!seatIds || !Array.isArray(seatIds) || seatIds.length === 0 || !customerName || !phone || !email || amount === undefined || !showId || !showDate || !showTime) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (isShowStartInPastDubai(String(showDate), String(showTime))) {
+      return NextResponse.json(
+        { error: "Show time has passed. Booking is disabled." },
         { status: 400 }
       );
     }

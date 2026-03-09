@@ -44,7 +44,7 @@ export function BookingDialog({
   const [email, setEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [loading, setLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [successType, setSuccessType] = useState<"booking" | null>(null);
   const [bookedSeats, setBookedSeats] = useState<Seat[]>([]);
   const { toast } = useToast();
 
@@ -52,7 +52,7 @@ export function BookingDialog({
   useEffect(() => setMounted(true), []);
 
   const handleClose = () => {
-    setIsSuccess(false);
+    setSuccessType(null);
     setBookedSeats([]);
     setName("");
     setPhone("");
@@ -61,6 +61,7 @@ export function BookingDialog({
     onClose();
   };
 
+  const isSuccess = successType !== null;
   const activeSeats = isSuccess ? bookedSeats : seats;
   const totalAmount = activeSeats.reduce((sum, s) => sum + s.price, 0);
   const subtotal = ((totalAmount * 100) / 105).toFixed(2);
@@ -77,10 +78,10 @@ export function BookingDialog({
 
 
   const handleBooking = async () => {
-    if (!name.trim() || !phone.trim() || !email.trim() || !showTime) {
+    if (!name.trim() || !phone.trim() || !email.trim() || !showTime || !showId) {
       toast({
         title: "Validation Error",
-        description: "Name, Phone, Email, and Show Time are required.",
+        description: "Name, Phone, Email, and Show are required.",
         variant: "destructive",
       });
       return;
@@ -116,7 +117,7 @@ export function BookingDialog({
       });
 
       setBookedSeats(seats);
-      setIsSuccess(true);
+      setSuccessType("booking");
       onBookingComplete(seats.map(s => s.seat_id));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -180,6 +181,10 @@ export function BookingDialog({
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs text-center font-medium shadow-sm">
                   ⚠️ Ticket is valid for:<br />
                   <strong className="text-amber-900">{showDateLabel} - {formatTime12Hour(showTime)}</strong>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-xs text-center font-semibold shadow-sm">
+                  Note: There is no pay-later option. Payment is always taken at booking time.
                 </div>
 
                 <div className="grid gap-2">
@@ -262,58 +267,58 @@ export function BookingDialog({
           ) : (
             <>
               <div className="p-6 flex flex-col items-center justify-center text-center print:hidden">
-                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-green-500" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Booking Success!</h2>
-                <p className="text-slate-500 mb-4">
-                  Successfully booked {bookedSeats.length} ticket(s) under <strong className="text-slate-700">{name}</strong>.
-                </p>
+                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-green-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2">Booking Success!</h2>
+                  <p className="text-slate-500 mb-4">
+                    Successfully booked {bookedSeats.length} ticket(s) under <strong className="text-slate-700">{name}</strong>.
+                  </p>
 
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 w-full mb-6">
-                  <div className="flex justify-between text-sm text-slate-500 mb-1">
-                    <span>Subtotal:</span>
-                    <span>{subtotal} AED</span>
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 w-full mb-6">
+                    <div className="flex justify-between text-sm text-slate-500 mb-1">
+                      <span>Subtotal:</span>
+                      <span>{subtotal} AED</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-slate-500 mb-2">
+                      <span>VAT (5%):</span>
+                      <span>{vat} AED</span>
+                    </div>
+                    <div className="border-t border-slate-200 my-2"></div>
+                    <div className="flex justify-between font-bold text-slate-800 text-lg">
+                      <span>Total Paid:</span>
+                      <span>{totalAmount} AED</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400 mt-1">
+                      <span>Payment Method:</span>
+                      <span className="uppercase">{paymentMethod}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm text-slate-500 mb-2">
-                    <span>VAT (5%):</span>
-                    <span>{vat} AED</span>
-                  </div>
-                  <div className="border-t border-slate-200 my-2"></div>
-                  <div className="flex justify-between font-bold text-slate-800 text-lg">
-                    <span>Total Paid:</span>
-                    <span>{totalAmount} AED</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-400 mt-1">
-                    <span>Payment Method:</span>
-                    <span className="uppercase">{paymentMethod}</span>
-                  </div>
-                </div>
 
-                <div className="flex flex-col w-full gap-3">
-                  <Button 
-                    onClick={handlePrint}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-200"
-                  >
-                    <Printer className="w-4 h-4 mr-2" />
-                    Print Receipt
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={handleClose}
-                    className="w-full rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
-                  >
-                    Close Window
-                  </Button>
+                  <div className="flex flex-col w-full gap-3">
+                    <Button
+                      onClick={handlePrint}
+                      className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-200"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print Receipt
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleClose}
+                      className="w-full rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
+                    >
+                      Close Window
+                    </Button>
+                  </div>
                 </div>
-              </div>
             </>
           )}
         </DialogContent>
       </Dialog>
       
       {/* Hidden Thermal Print Layout (Mounted outside dialog overflow!) */}
-      {isSuccess && mounted && typeof document !== 'undefined' && createPortal(
+      {successType === "booking" && mounted && typeof document !== 'undefined' && createPortal(
         <ReceiptTicket 
           movieTitle={movieTitle || "Al Hamra Cinema Show"}
           showTime={formatTime12Hour(showTime)}

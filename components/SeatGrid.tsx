@@ -66,9 +66,10 @@ export function SeatGrid({
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === "Booked" || seat.status === "Reserved") {
+      const label = "booked";
       toast({
         title: "Seat Unavailable",
-        description: `This seat is currently ${seat.status.toLowerCase()}.`,
+        description: `This seat is currently ${label}.`,
         variant: "destructive",
       });
       return;
@@ -210,7 +211,7 @@ export function SeatGrid({
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-sm bg-slate-100 border border-slate-200 shrink-0"></div>
-            <span className="text-sm font-medium text-slate-600">Reserved</span>
+            <span className="text-sm font-medium text-slate-600">Booked</span>
           </div>
         </div>
       </div>

@@ -36,6 +36,21 @@ export interface Show {
   isActive: boolean;
 }
 
+export type ReservationStatus = "Active" | "Cancelled" | "Expired";
+
+export interface Reservation {
+  id: string;
+  showId: string;
+  showDate: string; // YYYY-MM-DD
+  seatIds: string; // comma-separated seat IDs
+  customerName: string;
+  phone: string;
+  email: string;
+  status: ReservationStatus;
+  expiresAt: string; // ISO timestamp
+  createdAt: string; // ISO timestamp
+}
+
 export type UserRole = "admin" | "user";
 
 export interface User {

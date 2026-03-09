@@ -1,5 +1,14 @@
 import { sheets, SPREADSHEET_ID } from "./google";
-import { Seat, SeatStatus, Show, Booking, User, UserRole } from "./types";
+import {
+  Seat,
+  SeatStatus,
+  Show,
+  Booking,
+  Reservation,
+  ReservationStatus,
+  User,
+  UserRole,
+} from "./types";
 
 interface MockBooking {
   seatId: string;
@@ -7,8 +16,26 @@ interface MockBooking {
   showDate: string;
 }
 
-const globalForBookings = global as unknown as { mockBookings: MockBooking[]; mockShows: Show[] };
+interface MockReservation {
+  id: string;
+  showId: string;
+  showDate: string;
+  seatIds: string[];
+  customerName: string;
+  phone: string;
+  email: string;
+  status: ReservationStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+const globalForBookings = global as unknown as {
+  mockBookings: MockBooking[];
+  mockShows: Show[];
+  mockReservations: MockReservation[];
+};
 if (!globalForBookings.mockBookings) globalForBookings.mockBookings = [];
+if (!globalForBookings.mockReservations) globalForBookings.mockReservations = [];
 if (!globalForBookings.mockShows) {
   globalForBookings.mockShows = [
     { id: "1", movieTitle: "Dune: Part Two", showTime: "10:00 AM", isActive: true },
@@ -117,6 +144,7 @@ export async function fetchAllSeats(showKey?: string, showDate?: string): Promis
       } catch (e) {
         console.warn("Failed to fetch bookings for dynamic seat status calculation:", e);
       }
+
     }
 
     return rows.map((row) => ({
@@ -546,6 +574,262 @@ export async function fetchAllBookings(
     console.error("Error fetching bookings:", error);
     return [];
   }
+}
+
+// -------------------------------------------------------------
+// Reservations Management
+// Schema: reservations!A:J
+//   A: reservation_id
+//   B: show_id
+//   C: show_date (YYYY-MM-DD)
+//   D: seat_ids (comma-separated)
+//   E: customer_name
+//   F: phone
+//   G: email
+//   H: status (Active | Cancelled | Expired)
+//   I: expires_at (ISO)
+//   J: created_at (ISO)
+// -------------------------------------------------------------
+
+const RESERVATIONS_SHEET_RANGE = "reservations!A2:J";
+const RESERVATIONS_HEADER = [
+  "reservation_id",
+  "show_id",
+  "show_date",
+  "seat_ids",
+  "customer_name",
+  "phone",
+  "email",
+  "status",
+  "expires_at",
+  "created_at",
+];
+
+export { RESERVATIONS_HEADER };
+
+function computeReservationStatus(statusRaw: string, expiresAtRaw: string, showDateRaw?: string): ReservationStatus {
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  if (showDateRaw && isoDatePattern.test(showDateRaw) && showDateRaw < todayIso) return "Expired";
+
+  const normalized = (statusRaw || "").trim();
+  if (normalized === "Cancelled") return "Cancelled";
+  if (normalized === "Expired") return "Expired";
+  if (normalized !== "Active") return "Expired";
+
+  const exp = new Date(expiresAtRaw || "").getTime();
+  if (isNaN(exp)) return "Expired";
+  if (exp <= Date.now()) return "Expired";
+  return "Active";
+}
+
+export async function fetchReservationById(reservationId: string): Promise<Reservation | null> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!reservationId) return null;
+
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    const r = globalForBookings.mockReservations.find((x) => x.id === reservationId);
+    if (!r) return null;
+    return {
+      id: r.id,
+      showId: r.showId,
+      showDate: r.showDate,
+      seatIds: r.seatIds.join(", "),
+      customerName: r.customerName,
+      phone: r.phone,
+      email: r.email,
+      status: computeReservationStatus(r.status, r.expiresAt, r.showDate),
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+    };
+  }
+
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "reservations!A:A",
+  });
+  const ids = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = ids.indexOf(reservationId);
+  if (rowIndex === -1) return null;
+
+  const sheetRow = rowIndex + 1;
+  const rowRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `reservations!A${sheetRow}:J${sheetRow}`,
+  });
+  const row = rowRes.data.values?.[0] || [];
+  if (!row || row.length === 0) return null;
+
+  const status = computeReservationStatus(String(row[7] || ""), String(row[8] || ""), String(row[2] || ""));
+  return {
+    id: String(row[0] || ""),
+    showId: String(row[1] || ""),
+    showDate: String(row[2] || ""),
+    seatIds: String(row[3] || ""),
+    customerName: String(row[4] || ""),
+    phone: String(row[5] || ""),
+    email: String(row[6] || ""),
+    status,
+    expiresAt: String(row[8] || ""),
+    createdAt: String(row[9] || ""),
+  };
+}
+
+export async function fetchAllReservations(
+  filterShowDate?: string,
+  filterStatus?: ReservationStatus | "all",
+  filterShowId?: string
+): Promise<Reservation[]> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    let list: Reservation[] = globalForBookings.mockReservations.map((r) => ({
+      id: r.id,
+      showId: r.showId,
+      showDate: r.showDate,
+      seatIds: r.seatIds.join(", "),
+      customerName: r.customerName,
+      phone: r.phone,
+      email: r.email,
+      status: computeReservationStatus(r.status, r.expiresAt, r.showDate),
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+    }));
+
+    if (filterShowId) list = list.filter((x) => x.showId === filterShowId);
+    if (filterShowDate && isoDatePattern.test(filterShowDate)) list = list.filter((x) => x.showDate === filterShowDate);
+    if (filterStatus && filterStatus !== "all") list = list.filter((x) => x.status === filterStatus);
+
+    return list.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  }
+
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: RESERVATIONS_SHEET_RANGE,
+    });
+    const rows = res.data.values || [];
+
+    let reservations: Reservation[] = rows
+      .filter((r) => (r[0] || "").trim() !== "")
+      .map((r) => {
+        const status = computeReservationStatus(r[7] || "", r[8] || "", r[2] || "");
+        return {
+          id: r[0] || "",
+          showId: r[1] || "",
+          showDate: r[2] || "",
+          seatIds: r[3] || "",
+          customerName: r[4] || "",
+          phone: r[5] || "",
+          email: r[6] || "",
+          status,
+          expiresAt: r[8] || "",
+          createdAt: r[9] || "",
+        };
+      });
+
+    if (filterShowId) reservations = reservations.filter((x) => x.showId === filterShowId);
+    if (filterShowDate && isoDatePattern.test(filterShowDate)) reservations = reservations.filter((x) => x.showDate === filterShowDate);
+    if (filterStatus && filterStatus !== "all") reservations = reservations.filter((x) => x.status === filterStatus);
+
+    return reservations.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  } catch (error) {
+    console.error("Error fetching reservations:", error);
+    return [];
+  }
+}
+
+export async function createReservationRecord(input: {
+  showId: string;
+  showDate: string;
+  seatIds: string[];
+  customerName: string;
+  phone: string;
+  email: string;
+  ttlMinutes?: number;
+}): Promise<{ reservationId: string; expiresAt: string }> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const now = new Date();
+  const createdAt = now.toISOString();
+  const safeShowDate = isoDatePattern.test(input.showDate) ? input.showDate : createdAt.split("T")[0];
+
+  // Reservation is an advance hold for later show/date (payment at counter when issuing the ticket).
+  // Default expiry is end-of-show-date to cover morning -> evening reservations.
+  const expiresAt = new Date(`${safeShowDate}T23:59:59.999Z`).toISOString();
+
+  // Lightweight UUID without adding dependency (uuid already exists in deps, but keep helpers pure)
+  const reservationId = `res_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    globalForBookings.mockReservations.push({
+      id: reservationId,
+      showId: input.showId,
+      showDate: safeShowDate,
+      seatIds: input.seatIds,
+      customerName: input.customerName,
+      phone: input.phone,
+      email: input.email,
+      status: "Active",
+      expiresAt,
+      createdAt,
+    });
+    return { reservationId, expiresAt };
+  }
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: RESERVATIONS_SHEET_RANGE,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [
+        [
+          reservationId,
+          input.showId,
+          safeShowDate,
+          input.seatIds.join(", "),
+          input.customerName,
+          input.phone,
+          input.email,
+          "Active",
+          expiresAt,
+          createdAt,
+        ],
+      ],
+    },
+  });
+
+  return { reservationId, expiresAt };
+}
+
+export async function updateReservationStatus(reservationId: string, status: ReservationStatus): Promise<void> {
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!reservationId) throw new Error("Missing reservationId");
+
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    const idx = globalForBookings.mockReservations.findIndex((r) => r.id === reservationId);
+    if (idx !== -1) globalForBookings.mockReservations[idx].status = status;
+    return;
+  }
+
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "reservations!A:A",
+  });
+  const ids = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = ids.indexOf(reservationId);
+  if (rowIndex === -1) throw new Error(`Reservation ${reservationId} not found`);
+  const sheetRow = rowIndex + 1;
+
+  // Status column is H
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `reservations!H${sheetRow}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[status]] },
+  });
 }
 
 // -------------------------------------------------------------

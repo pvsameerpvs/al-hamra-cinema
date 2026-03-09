@@ -8,6 +8,7 @@ import {
   PlaySquare,
   Ticket,
   History,
+  Bookmark,
   LogOut,
   FileText,
 } from "lucide-react";
@@ -96,6 +97,18 @@ export function Sidebar() {
         >
           <History className="w-4 h-4" />
           Booking History
+        </Link>
+
+        <Link
+          href="/dashboard/reservations"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+            pathname.startsWith("/dashboard/reservations")
+              ? "bg-indigo-50 text-indigo-600"
+              : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          <Bookmark className="w-4 h-4" />
+          Pre-Bookings
         </Link>
         <Link
           href="/dashboard/reports/daily"
