@@ -75,27 +75,24 @@
   }
 }
 
-/* 
-  Thermal Receipt Print Overrides 
-  (For 80mm POZONE Printers or native browser Card/Custom size printing)
+/*
+  Print Overrides
+  - Receipts are printed from a portal attached to `document.body`.
+  - We scope receipt-only print rules behind `body[data-print="receipt"]`
+    so other documents (e.g. A4 reports) can print normally.
 */
 @media print {
-  @page {
-    margin: 0;
-    size: 80mm auto;
-  }
-
-  body > :not(#receipt-root) {
-    display: none !important;
-  }
-
-  body {
+  body[data-print="receipt"] {
     background: white;
     margin: 0;
     padding: 0;
   }
 
-  #receipt-root {
+  body[data-print="receipt"] > :not(#receipt-root) {
+    display: none !important;
+  }
+
+  body[data-print="receipt"] #receipt-root {
     display: block !important;
     position: static;
     width: 80mm;

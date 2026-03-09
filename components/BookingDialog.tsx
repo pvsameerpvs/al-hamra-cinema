@@ -124,15 +124,35 @@ export function BookingDialog({
 
   const handlePrint = () => {
     const originalTitle = document.title;
-    const safeName = name.replace(/[^a-zA-Z0-9]/g, '');
+    const safeName = name.replace(/[^a-zA-Z0-9]/g, "");
     const last4Phone = phone.trim().slice(-4);
+
     // Setting the exact filename standard for PDF saving/printing spoolers
     document.title = `${safeName}-${last4Phone}`;
-    
+
+    // Scope print CSS to receipt only (prevents breaking other prints)
+    document.body.dataset.print = "receipt";
+
+    // Inject receipt-only @page size (cannot be scoped via selectors)
+    const styleEl = document.createElement("style");
+    styleEl.setAttribute("data-print-style", "receipt");
+    styleEl.media = "print";
+    styleEl.textContent = `@page { margin: 0; size: 80mm auto; }`;
+    document.head.appendChild(styleEl);
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      delete document.body.dataset.print;
+      styleEl.remove();
+      document.title = originalTitle;
+    };
+
+    window.addEventListener("afterprint", cleanup, { once: true });
+    // Fallback: some browsers don't reliably fire `afterprint`.
+    window.addEventListener("focus", cleanup, { once: true });
     window.print();
-    
-    // Revert the page title back to normal once the print dialog closes
-    document.title = originalTitle;
   };
 
   return (
