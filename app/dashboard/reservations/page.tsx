@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { MoveLeft, Loader2, Search, CalendarDays, X, Ticket } from "lucide-react";
+import { MoveLeft, Loader2, Search, CalendarDays, X, Ticket, Trash2 } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { useToast } from "@/hooks/use-toast";
 import type { Booking, Seat, Show } from "@/lib/types";
@@ -30,6 +30,7 @@ function PreBookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string>("user");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedShowDate, setSelectedShowDate] = useState<string>("");
@@ -79,6 +80,38 @@ function PreBookingsContent() {
     fetchPreBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.user?.role) setUserRole(String(d.user.role));
+      })
+      .catch(() => {});
+  }, []);
+
+  const deleteBooking = async (bookingId: string) => {
+    const ok = window.confirm("Delete this booking? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e?.error || "Failed to delete booking");
+      }
+      toast({ title: "Deleted", description: "Booking removed." });
+      await fetchPreBookings();
+    } catch (err: unknown) {
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  };
 
   const todayIso = new Date().toISOString().split("T")[0];
 
@@ -354,12 +387,25 @@ function PreBookingsContent() {
                         </td>
                         <td className="px-6 py-4 text-slate-600 text-sm">{bookedAtLabel}</td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => printBooking(b)}
-                            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:border-slate-300"
-                          >
-                            Print
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => printBooking(b)}
+                              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:border-slate-300"
+                            >
+                              Print
+                            </button>
+                            {userRole === "admin" && (
+                              <button
+                                type="button"
+                                onClick={() => deleteBooking(b.id)}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-100"
+                                title="Delete booking"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

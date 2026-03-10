@@ -1,13 +1,15 @@
-import { User, Phone, Mail, Ticket, CreditCard, CalendarDays, History, Loader2 } from "lucide-react";
+import { User, Phone, Mail, Ticket, CreditCard, CalendarDays, History, Loader2, Trash2 } from "lucide-react";
 import { Booking, Show } from "@/lib/types";
 
 interface BookingsTableProps {
   bookings: Booking[];
   shows: Show[];
   loading: boolean;
+  canDelete?: boolean;
+  onDelete?: (bookingId: string) => void;
 }
 
-export function BookingsTable({ bookings, shows, loading }: BookingsTableProps) {
+export function BookingsTable({ bookings, shows, loading, canDelete, onDelete }: BookingsTableProps) {
   if (loading) {
     return (
       <div className="p-16 flex flex-col items-center justify-center">
@@ -38,6 +40,7 @@ export function BookingsTable({ bookings, shows, loading }: BookingsTableProps) 
             <th className="px-6 py-3.5 font-semibold">Booking Details</th>
             <th className="px-6 py-3.5 font-semibold">Payment</th>
             <th className="px-6 py-3.5 font-semibold">Date</th>
+            {canDelete ? <th className="px-6 py-3.5 font-semibold">Action</th> : null}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50">
@@ -135,6 +138,19 @@ export function BookingsTable({ bookings, shows, loading }: BookingsTableProps) 
                     }) : "Unknown Date"}
                   </div>
                 </td>
+                {canDelete ? (
+                  <td className="px-6 py-4">
+                    <button
+                      type="button"
+                      onClick={() => onDelete?.(booking.id)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-100"
+                      title="Delete booking"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             );
           })}

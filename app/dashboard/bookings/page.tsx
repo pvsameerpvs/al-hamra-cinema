@@ -40,6 +40,7 @@ function BookingsHistoryContent() {
   const [selectedDate, setSelectedDate] = useState<string>(searchParams.get("filterDate") || "");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string>("user");
 
   const filteredBookings = bookings.filter(b => {
     if (!searchQuery) return true;
@@ -91,6 +92,15 @@ function BookingsHistoryContent() {
   };
   const { toast } = useToast();
 
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.user?.role) setUserRole(String(d.user.role));
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchBookings = async () => {
     setLoading(true);
     try {
@@ -132,6 +142,29 @@ function BookingsHistoryContent() {
     router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMovie, selectedMonth, selectedDate]);
+
+  const deleteBooking = async (bookingId: string) => {
+    const ok = window.confirm("Delete this booking? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e?.error || "Failed to delete booking");
+      }
+      toast({ title: "Deleted", description: "Booking removed." });
+      await fetchBookings();
+    } catch (err: unknown) {
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
@@ -260,7 +293,13 @@ function BookingsHistoryContent() {
             </div>
           </div>
 
-          <BookingsTable bookings={filteredBookings} shows={shows} loading={loading} />
+          <BookingsTable
+            bookings={filteredBookings}
+            shows={shows}
+            loading={loading}
+            canDelete={userRole === "admin"}
+            onDelete={deleteBooking}
+          />
         </div>
       </div>
     </div>

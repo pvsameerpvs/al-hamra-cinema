@@ -46,6 +46,58 @@ if (!globalForBookings.mockShows) {
   ];
 }
 
+const sheetIdCache: Record<string, number> = {};
+
+async function getSheetIdByTitle(sheetTitle: string): Promise<number> {
+  const title = String(sheetTitle || "").trim();
+  if (!title) throw new Error("Missing sheet title");
+  const cached = sheetIdCache[title];
+  if (cached !== undefined) return cached;
+  if (!SPREADSHEET_ID) throw new Error("Missing GOOGLE_SHEET_ID");
+
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId: SPREADSHEET_ID,
+  });
+  const found = meta.data.sheets?.find((s) => s.properties?.title === title);
+  const sheetId = found?.properties?.sheetId;
+  if (sheetId === null || sheetId === undefined) throw new Error(`Sheet "${title}" not found`);
+  sheetIdCache[title] = sheetId;
+  return sheetId;
+}
+
+async function deleteSheetRows(sheetTitle: string, sheetRows: number[]): Promise<number> {
+  if (!SPREADSHEET_ID) throw new Error("Missing GOOGLE_SHEET_ID");
+
+  const unique = Array.from(
+    new Set(
+      (sheetRows || [])
+        .map((r) => Number(r))
+        .filter((r) => Number.isFinite(r) && r >= 2)
+    )
+  ).sort((a, b) => b - a);
+
+  if (unique.length === 0) return 0;
+
+  const sheetId = await getSheetIdByTitle(sheetTitle);
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: unique.map((sheetRow) => ({
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: "ROWS",
+            startIndex: sheetRow - 1,
+            endIndex: sheetRow,
+          },
+        },
+      })),
+    },
+  });
+
+  return unique.length;
+}
+
 export async function fetchAllSeats(showKey?: string, showDate?: string): Promise<Seat[]> {
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const today = new Date().toISOString().split("T")[0];
@@ -576,6 +628,62 @@ export async function fetchAllBookings(
   }
 }
 
+export async function deleteBookingRecord(bookingId: string): Promise<void> {
+  const id = String(bookingId || "").trim();
+  if (!id) throw new Error("Missing bookingId");
+
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    // Mock mode: booking ids are generated as mock-${index}
+    if (!id.startsWith("mock-")) {
+      console.warn("Mock: deleteBookingRecord ignored (non-mock id)");
+      return;
+    }
+    const idx = Number(id.slice("mock-".length));
+    if (!Number.isFinite(idx) || idx < 0) return;
+    if (!globalForBookings.mockBookings || idx >= globalForBookings.mockBookings.length) return;
+    globalForBookings.mockBookings.splice(idx, 1);
+    return;
+  }
+
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "bookings!A:A",
+  });
+  const ids = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = ids.indexOf(id);
+  if (rowIndex === -1) throw new Error(`Booking ${id} not found`);
+  const sheetRow = rowIndex + 1;
+
+  if (sheetRow <= 1) throw new Error("Refusing to delete header row");
+  await deleteSheetRows("bookings", [sheetRow]);
+}
+
+export async function deleteRevenueLogsByBookingId(bookingId: string): Promise<number> {
+  const id = String(bookingId || "").trim();
+  if (!id) throw new Error("Missing bookingId");
+
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    // Revenue logs are not stored in mock mode.
+    return 0;
+  }
+
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "revenue_logs!A:A",
+  });
+  const ids = idRes.data.values?.map((r) => r[0]) || [];
+  const matches: number[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    if (ids[i] === id) matches.push(i);
+  }
+  // i is 0-based where row 1 is header.
+  const rowsToDelete = matches.filter((x) => x >= 1).map((x) => x + 1);
+  const deleted = await deleteSheetRows("revenue_logs", rowsToDelete);
+  return deleted;
+}
+
 // -------------------------------------------------------------
 // Reservations Management
 // Schema: reservations!A:J
@@ -830,6 +938,30 @@ export async function updateReservationStatus(reservationId: string, status: Res
     valueInputOption: "RAW",
     requestBody: { values: [[status]] },
   });
+}
+
+export async function deleteReservationRecord(reservationId: string): Promise<void> {
+  const id = String(reservationId || "").trim();
+  if (!id) throw new Error("Missing reservationId");
+
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  if (!privateKey || privateKey.includes("Your\\nSuper") || privateKey.includes("Your\nSuper")) {
+    const idx = globalForBookings.mockReservations.findIndex((r) => r.id === id);
+    if (idx !== -1) globalForBookings.mockReservations.splice(idx, 1);
+    return;
+  }
+
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "reservations!A:A",
+  });
+  const ids = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = ids.indexOf(id);
+  if (rowIndex === -1) throw new Error(`Reservation ${id} not found`);
+  const sheetRow = rowIndex + 1;
+
+  if (sheetRow <= 1) throw new Error("Refusing to delete header row");
+  await deleteSheetRows("reservations", [sheetRow]);
 }
 
 // -------------------------------------------------------------
