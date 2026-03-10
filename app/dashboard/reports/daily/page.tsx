@@ -87,6 +87,10 @@ function getBookingShowDate(booking: Booking) {
   return "";
 }
 
+function round2(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 export default function DailyReportPage() {
   return (
     <Suspense fallback={<div className="p-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
@@ -242,7 +246,7 @@ function DailyReportContent() {
           selectedMovieTicketsSold: summary[classCode].selectedMovieTicketsSold,
           todayTicketsSold,
           ticketPrice,
-          grossCollection: todayTicketsSold * ticketPrice,
+          grossCollection: round2(todayTicketsSold * ticketPrice),
         };
       });
 
@@ -320,7 +324,12 @@ function DailyReportContent() {
     return noLead.replace(":", ".").toUpperCase();
   };
 
-  const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const splitDhsFils = (n: number) => {
+    const fixed = round2(n);
+    const dhs = Math.floor(fixed);
+    const fils = Math.round((fixed - dhs) * 100).toString().padStart(2, "0");
+    return { dhs, fils };
+  };
 
   const handleDownloadJson = () => {
     const payload = {
@@ -346,8 +355,9 @@ function DailyReportContent() {
         grand_total_selected_movie_ticket_sold: grandTotalSelectedMovieTickets,
         grand_total_today_ticket_sold: grandTotalTodayTickets,
         grand_total_gross: grandTotalGross,
-        municipal_tax_10_percent: round2(grandTotalGross * 0.1),
-        net_amount: round2(grandTotalGross - grandTotalGross * 0.1),
+        municipal_tax_10_percent: municipalTax,
+        net_amount: netAmount,
+        distributor_share_50_percent_on_net_amount: distributorShare,
         distributor_name: distributorName,
       },
     };
@@ -376,9 +386,10 @@ function DailyReportContent() {
     return formatTime12Hour(selectedShowTime).toUpperCase();
   };
 
-  const municipalTax = grandTotalGross * 0.10;
-  const netAmount = grandTotalGross - municipalTax;
-  const distributorShare = netAmount * 0.50;
+  const municipalTax = round2(grandTotalGross * 0.10);
+  const netAmount = round2(grandTotalGross + municipalTax);
+  const distributorShare = round2(netAmount * 0.50);
+  const municipalTaxDhsFils = splitDhsFils(municipalTax);
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans print:bg-white print:min-h-0">
@@ -573,13 +584,13 @@ function DailyReportContent() {
                     </tr>
                     <tr className="border-b border-black">
                       <td className="border-r border-black p-1 pr-2">MUNICIPAL TAXES 10% ON GROSS PROFIT</td>
-                      <td className="border-r border-black p-1 text-center">{Math.floor(municipalTax)}</td>
-                      <td className="p-1 text-center">{Math.round((municipalTax % 1) * 100).toString().padStart(2, '0')}</td>
+                      <td className="border-r border-black p-1 text-center">{municipalTaxDhsFils.dhs}</td>
+                      <td className="p-1 text-center">{municipalTaxDhsFils.fils}</td>
                     </tr>
                     <tr className="border-b border-black">
                       <td className="border-r border-black p-1 pr-2">TOTAL DEDUCTION</td>
-                      <td className="border-r border-black p-1 text-center">{Math.floor(municipalTax)}</td>
-                      <td className="p-1 text-center">{Math.round((municipalTax % 1) * 100).toString().padStart(2, '0')}</td>
+                      <td className="border-r border-black p-1 text-center">{municipalTaxDhsFils.dhs}</td>
+                      <td className="p-1 text-center">{municipalTaxDhsFils.fils}</td>
                     </tr>
                   </tbody>
                 </table>
