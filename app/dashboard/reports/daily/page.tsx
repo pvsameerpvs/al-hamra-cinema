@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, Suspense, Fragment } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Loader2, FileText, Printer, Filter, PlaySquare, Clock, Download } from "lucide-react";
@@ -48,20 +48,44 @@ function extractBracketValue(seatIds: string) {
   return match ? match[1] : "";
 }
 
-// Helper to group and calculate
-type ClassData = {
-  rate: number;
-  ticketsSold: number;
-  gross: number;
+type SeatClass = "B" | "O";
+
+type ClassSummaryRow = {
+  classCode: SeatClass;
+  lifetimeTicketsSold: number;
+  selectedMovieTicketsSold: number;
+  todayTicketsSold: number;
+  ticketPrice: number;
+  grossCollection: number;
 };
 
-type ShowReport = {
+type ShowTimeSummary = {
   showTime: string;
-  classes: {
-    B: ClassData;
-    O: ClassData;
-  };
+  rows: ClassSummaryRow[];
 };
+
+const CLASS_PRICES: Record<SeatClass, number> = {
+  B: 35,
+  O: 30,
+};
+
+function parseSeatIds(seatIds: string) {
+  return String(seatIds || "")
+    .replace(/\[.*?\]\s*/, "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function resolveSeatClass(seatId: string): SeatClass {
+  return seatId.toUpperCase().startsWith("B") ? "B" : "O";
+}
+
+function getBookingShowDate(booking: Booking) {
+  if (booking.showDate) return booking.showDate;
+  if (booking.createdAt) return booking.createdAt.split("T")[0];
+  return "";
+}
 
 export default function DailyReportPage() {
   return (
@@ -87,13 +111,10 @@ function DailyReportContent() {
   const [printActive, setPrintActive] = useState(false);
   const printPortalRef = useRef<HTMLElement | null>(null);
 
-      const fetchReportData = async () => {
+  const fetchReportData = async () => {
     setLoading(true);
     try {
-        const queryParams = new URLSearchParams();
-        if (selectedDate) queryParams.set("showDate", selectedDate);
-
-      const res = await fetch(`/api/bookings?${queryParams.toString()}`, { cache: "no-store" });
+      const res = await fetch("/api/bookings", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load data");
       const data = await res.json();
       setBookings(data.bookings || []);
@@ -127,7 +148,7 @@ function DailyReportContent() {
     return values;
   }, [bookings]);
 
-  // Report should include shows that are active OR referenced by bookings for the selected day
+  // Report should include shows that are active OR referenced by bookings.
   const relevantShows = useMemo(() => {
     return shows.filter((s) => s.isActive || bookingBracketValues.has(s.id) || bookingBracketValues.has(s.showTime));
   }, [shows, bookingBracketValues]);
@@ -143,7 +164,7 @@ function DailyReportContent() {
     return unique;
   }, [relevantShows, selectedMovie]);
 
-  const resolveBookingShow = (seatIds: string) => {
+  const resolveBookingShow = useCallback((seatIds: string) => {
     const bracket = extractBracketValue(seatIds || "");
 
     // New format: bracket contains showId
@@ -157,71 +178,83 @@ function DailyReportContent() {
       movieTitle: show?.movieTitle,
       showTime: show?.showTime || bracket,
     };
-  };
+  }, [relevantShows]);
 
-  // Aggregate Data
-  const reportData: ShowReport[] = [];
-  let grandTotalTickets = 0;
-  let grandTotalGross = 0;
+  const showTimeReports = useMemo<ShowTimeSummary[]>(() => {
+    const targetShows = selectedMovie !== "all"
+      ? relevantShows.filter((s) => s.movieTitle === selectedMovie)
+      : relevantShows;
 
-  // We only want to show data for the selected movie's showtimes OR all active shows if "all"
-  const targetShows = selectedMovie !== "all"
-    ? relevantShows.filter((s) => s.movieTitle === selectedMovie)
-    : relevantShows;
+    const uniqueShowtimes = Array.from(new Set(targetShows.map((s) => s.showTime)))
+      .sort((a, b) => parseShowTimeMinutes(a) - parseShowTimeMinutes(b));
 
-  const uniqueShowtimes = Array.from(new Set(targetShows.map((s) => s.showTime)))
-    .sort((a, b) => parseShowTimeMinutes(a) - parseShowTimeMinutes(b));
+    const showtimesToRender = selectedShowTime !== "all"
+      ? [selectedShowTime]
+      : uniqueShowtimes;
 
-  const showtimesToRender = selectedShowTime !== "all"
-    ? [selectedShowTime]
-    : uniqueShowtimes;
+    return showtimesToRender.map((showTime) => {
+      const summary: Record<SeatClass, Omit<ClassSummaryRow, "classCode" | "ticketPrice">> = {
+        B: {
+          lifetimeTicketsSold: 0,
+          selectedMovieTicketsSold: 0,
+          todayTicketsSold: 0,
+          grossCollection: 0,
+        },
+        O: {
+          lifetimeTicketsSold: 0,
+          selectedMovieTicketsSold: 0,
+          todayTicketsSold: 0,
+          grossCollection: 0,
+        },
+      };
 
-  // Pre-filter bookings based on selected dropdowns
-  const filteredBookings = bookings.filter((b) => {
-    const resolved = resolveBookingShow(b.seatIds || "");
-    if (!resolved.showTime) return false;
-    if (selectedMovie !== "all" && resolved.movieTitle !== selectedMovie) return false;
-    if (selectedShowTime !== "all" && resolved.showTime !== selectedShowTime) return false;
-    return true;
-  });
+      for (const booking of bookings) {
+        const seats = parseSeatIds(booking.seatIds || "");
+        if (!seats.length) continue;
 
-  showtimesToRender.forEach((st) => {
-    const showReport: ShowReport = {
-      showTime: st,
-      classes: {
-        B: { rate: 35, ticketsSold: 0, gross: 0 },
-        O: { rate: 30, ticketsSold: 0, gross: 0 },
-      }
-    };
+        const resolved = resolveBookingShow(booking.seatIds || "");
+        if (resolved.showTime !== showTime) continue;
 
-    // Find bookings for this showtime
-    filteredBookings.forEach((b) => {
-      const cleanIds = (b.seatIds || "").replace(/\[.*?\]\s*/, "").split(", ").filter((s) => s.trim() !== "");
-      const resolved = resolveBookingShow(b.seatIds || "");
-      const bShowTime = resolved.showTime;
+        const matchesSelectedMovie =
+          selectedMovie === "all" || resolved.movieTitle === selectedMovie;
+        const isSelectedDate = getBookingShowDate(booking) === selectedDate;
 
-      if (bShowTime === st) {
-        cleanIds.forEach((seat) => {
-          // Determine class by first letter
-          const seatClass = seat.charAt(0).toUpperCase();
-          if (seatClass === "B") {
-             showReport.classes.B.ticketsSold += 1;
-             showReport.classes.B.gross += showReport.classes.B.rate;
-             grandTotalTickets += 1;
-             grandTotalGross += showReport.classes.B.rate;
-          } else {
-             // Orchestra seats start with "O-"; treat any non-balcony as O
-             showReport.classes.O.ticketsSold += 1;
-             showReport.classes.O.gross += showReport.classes.O.rate;
-             grandTotalTickets += 1;
-             grandTotalGross += showReport.classes.O.rate;
+        for (const seat of seats) {
+          const seatClass = resolveSeatClass(seat);
+          summary[seatClass].lifetimeTicketsSold += 1;
+
+          if (matchesSelectedMovie) {
+            summary[seatClass].selectedMovieTicketsSold += 1;
           }
-        });
-      }
-    });
 
-    reportData.push(showReport);
-  });
+          if (matchesSelectedMovie && isSelectedDate) {
+            summary[seatClass].todayTicketsSold += 1;
+          }
+        }
+      }
+
+      const rows = (["B", "O"] as const).map((classCode) => {
+        const todayTicketsSold = summary[classCode].todayTicketsSold;
+        const ticketPrice = CLASS_PRICES[classCode];
+        return {
+          classCode,
+          lifetimeTicketsSold: summary[classCode].lifetimeTicketsSold,
+          selectedMovieTicketsSold: summary[classCode].selectedMovieTicketsSold,
+          todayTicketsSold,
+          ticketPrice,
+          grossCollection: todayTicketsSold * ticketPrice,
+        };
+      });
+
+      return { showTime, rows };
+    });
+  }, [bookings, relevantShows, resolveBookingShow, selectedDate, selectedMovie, selectedShowTime]);
+
+  const allReportRows = showTimeReports.flatMap((report) => report.rows);
+  const grandTotalLifetimeTickets = allReportRows.reduce((acc, row) => acc + row.lifetimeTicketsSold, 0);
+  const grandTotalSelectedMovieTickets = allReportRows.reduce((acc, row) => acc + row.selectedMovieTicketsSold, 0);
+  const grandTotalTodayTickets = allReportRows.reduce((acc, row) => acc + row.todayTicketsSold, 0);
+  const grandTotalGross = allReportRows.reduce((acc, row) => acc + row.grossCollection, 0);
 
   const sanitizeFilenamePart = (s: string) => {
     return String(s || "")
@@ -295,29 +328,23 @@ function DailyReportContent() {
         name: "AL HAMRA CINEMA",
         date: selectedDate ? formatDateDots(selectedDate) : "",
         movie_name: selectedMovie !== "all" ? selectedMovie : "",
+        show_time: selectedShowTime !== "all" ? formatTimeDots(selectedShowTime) : "ALL SHOW TIMES",
       },
-      collection_data: reportData.map((show) => ({
-        show_time: formatTimeDots(show.showTime),
-        entries: [
-          {
-            class: "B",
-            rate: show.classes.B.rate,
-            ticket_from: 0,
-            ticket_to: 0,
-            sold: show.classes.B.ticketsSold,
-            gross: show.classes.B.gross,
-          },
-          {
-            class: "O",
-            rate: show.classes.O.rate,
-            ticket_from: 0,
-            ticket_to: 0,
-            sold: show.classes.O.ticketsSold,
-            gross: show.classes.O.gross,
-          },
-        ],
+      collection_data: showTimeReports.map((report) => ({
+        show_time: formatTimeDots(report.showTime),
+        entries: report.rows.map((row) => ({
+          class: row.classCode,
+          life_time_ticket_sold: row.lifetimeTicketsSold,
+          selected_movie_all_ticket_sold: row.selectedMovieTicketsSold,
+          new_today_ticket_sold: row.todayTicketsSold,
+          price_of_the_ticket: row.ticketPrice,
+          gross_collection: row.grossCollection,
+        })),
       })),
       summary: {
+        grand_total_life_time_ticket_sold: grandTotalLifetimeTickets,
+        grand_total_selected_movie_ticket_sold: grandTotalSelectedMovieTickets,
+        grand_total_today_ticket_sold: grandTotalTodayTickets,
         grand_total_gross: grandTotalGross,
         municipal_tax_10_percent: round2(grandTotalGross * 0.1),
         net_amount: round2(grandTotalGross - grandTotalGross * 0.1),
@@ -482,48 +509,43 @@ function DailyReportContent() {
                 <thead>
                   <tr className="border-b border-black print:break-inside-avoid">
                     <td className="border-r border-black p-2 w-1/6">CLASS</td>
-                    <td className="border-r border-black p-2 w-1/6">RATE - AED</td>
-                    <td className="border-r border-black p-2 w-1/6">FROM</td>
-                    <td className="border-r border-black p-2 w-1/6">TO</td>
-                    <td className="border-r border-black p-2 w-1/6 font-bold">TOTAL TICKETS SOLD</td>
+                    <td className="border-r border-black p-2 w-1/6">LIFE TIME TICKET SOLD</td>
+                    <td className="border-r border-black p-2 w-1/6">THE SELECTED MOVIE ALL TICKET SOLD</td>
+                    <td className="border-r border-black p-2 w-1/6">NEW (TODAY) TICKET SOLD</td>
+                    <td className="border-r border-black p-2 w-1/6">PRICE OF THE TICKET</td>
                     <td className="p-2 w-1/6 font-bold">GROSS COLLECTION</td>
                   </tr>
                 </thead>
                 <tbody>
-                  {reportData.map((show, idx) => (
-                    <Fragment key={idx}>
+                  {showTimeReports.map((report) => (
+                    <Fragment key={report.showTime}>
                       <tr className="bg-slate-100 print:bg-gray-100 [-webkit-print-color-adjust:exact] break-inside-avoid">
                         <td colSpan={6} className="border-b border-black p-1 font-bold text-[10px] tracking-widest text-slate-700 print:text-black uppercase">
-                          SHOW TIME AT {formatTime12Hour(show.showTime)}
+                          SHOW TIME AT {formatTime12Hour(report.showTime)}
                         </td>
                       </tr>
-                      {/* Row B */}
-                      <tr className="border-b border-black break-inside-avoid">
-                        <td className="border-r border-black p-1.5">B</td>
-                        <td className="border-r border-black p-1.5">{show.classes.B.rate}</td>
-                        <td className="border-r border-black p-1.5">0</td>
-                        <td className="border-r border-black p-1.5">0</td>
-                        <td className="border-r border-black p-1.5 font-bold">{show.classes.B.ticketsSold}</td>
-                        <td className="p-1.5 font-bold">{show.classes.B.gross}</td>
-                      </tr>
-                      {/* Row O */}
-                      <tr className="border-b border-black break-inside-avoid">
-                        <td className="border-r border-black p-1.5">O</td>
-                        <td className="border-r border-black p-1.5">{show.classes.O.rate}</td>
-                        <td className="border-r border-black p-1.5">0</td>
-                        <td className="border-r border-black p-1.5">0</td>
-                        <td className="border-r border-black p-1.5 font-bold">{show.classes.O.ticketsSold}</td>
-                        <td className="p-1.5 font-bold">{show.classes.O.gross}</td>
-                      </tr>
+                      {report.rows.map((row) => (
+                        <tr key={`${report.showTime}-${row.classCode}`} className="border-b border-black break-inside-avoid">
+                          <td className="border-r border-black p-1.5">{row.classCode}</td>
+                          <td className="border-r border-black p-1.5">{row.lifetimeTicketsSold}</td>
+                          <td className="border-r border-black p-1.5">{row.selectedMovieTicketsSold}</td>
+                          <td className="border-r border-black p-1.5 font-bold">{row.todayTicketsSold}</td>
+                          <td className="border-r border-black p-1.5">{row.ticketPrice}</td>
+                          <td className="p-1.5 font-bold">{row.grossCollection}</td>
+                        </tr>
+                      ))}
                     </Fragment>
                   ))}
 
                   {/* Grand Total Row */}
                   <tr>
-                    <td colSpan={4} className="border-r border-black p-2 font-bold text-right pr-6 uppercase">
+                    <td className="border-r border-black p-2 font-bold uppercase">
                       Grand Total
                     </td>
-                    <td className="border-r border-black p-2 font-bold text-lg">{grandTotalTickets}</td>
+                    <td className="border-r border-black p-2 font-bold">{grandTotalLifetimeTickets}</td>
+                    <td className="border-r border-black p-2 font-bold">{grandTotalSelectedMovieTickets}</td>
+                    <td className="border-r border-black p-2 font-bold">{grandTotalTodayTickets}</td>
+                    <td className="border-r border-black p-2 font-bold">-</td>
                     <td className="p-2 font-bold text-lg">{grandTotalGross}</td>
                   </tr>
                 </tbody>
