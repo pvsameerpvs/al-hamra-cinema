@@ -1,91 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense, Fragment } from "react";
+import { useEffect, useRef, useState, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Loader2, FileText, Printer, Filter, PlaySquare, Clock, Download } from "lucide-react";
 import Link from "next/link";
-import { Booking, Show } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { formatTime12Hour } from "@/lib/utils";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
-
-function parseShowTimeMinutes(raw: string) {
-  if (!raw) return Number.POSITIVE_INFINITY;
-
-  const trimmed = raw.trim();
-
-  // Google Sheets fractional time string
-  if (!isNaN(Number(trimmed)) && trimmed.includes(".")) {
-    const fraction = Number(trimmed);
-    return Math.round(fraction * 24 * 60);
-  }
-
-  // 12-hour time like "01:00 PM"
-  const m12 = trimmed.match(/^(\d{1,2})\s*:\s*(\d{2})(?:\s*:\s*\d{2})?\s*(AM|PM)$/i);
-  if (m12) {
-    let h = parseInt(m12[1], 10);
-    const min = parseInt(m12[2], 10);
-    const ap = m12[3].toUpperCase();
-    if (h === 12) h = 0;
-    if (ap === "PM") h += 12;
-    return h * 60 + min;
-  }
-
-  // 24-hour time like "13:00"
-  const m24 = trimmed.match(/^(\d{1,2})\s*:\s*(\d{2})(?:\s*:\s*\d{2})?$/);
-  if (m24) {
-    const h = parseInt(m24[1], 10);
-    const min = parseInt(m24[2], 10);
-    return h * 60 + min;
-  }
-
-  return Number.POSITIVE_INFINITY;
-}
-
-function extractBracketValue(seatIds: string) {
-  const match = (seatIds || "").match(/\[(.*?)\]/);
-  return match ? match[1] : "";
-}
-
-type SeatClass = "B" | "O";
-
-type ClassSummaryRow = {
-  classCode: SeatClass;
-  lifetimeTicketsSold: number;
-  selectedMovieTicketsSold: number;
-  todayTicketsSold: number;
-  ticketPrice: number;
-  grossCollection: number;
-};
-
-type ShowTimeSummary = {
-  showTime: string;
-  rows: ClassSummaryRow[];
-};
-
-const CLASS_PRICES: Record<SeatClass, number> = {
-  B: 35,
-  O: 30,
-};
-
-function parseSeatIds(seatIds: string) {
-  return String(seatIds || "")
-    .replace(/\[.*?\]\s*/, "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function resolveSeatClass(seatId: string): SeatClass {
-  return seatId.toUpperCase().startsWith("B") ? "B" : "O";
-}
-
-function getBookingShowDate(booking: Booking) {
-  if (booking.showDate) return booking.showDate;
-  if (booking.createdAt) return booking.createdAt.split("T")[0];
-  return "";
-}
+import type { DailyReportComputation } from "@/lib/dailyReport";
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -102,8 +25,7 @@ export default function DailyReportPage() {
 function DailyReportContent() {
   const { toast } = useToast();
   
-  const [shows, setShows] = useState<Show[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [reportData, setReportData] = useState<DailyReportComputation | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedMovie, setSelectedMovie] = useState<string>("all");
@@ -118,11 +40,15 @@ function DailyReportContent() {
   const fetchReportData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/bookings", { cache: "no-store" });
+      const queryParams = new URLSearchParams({
+        selectedDate,
+        selectedMovie,
+        selectedShowTime,
+      });
+      const res = await fetch(`/api/reports/daily?${queryParams.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load data");
-      const data = await res.json();
-      setBookings(data.bookings || []);
-      setShows(data.shows || []);
+      const data: DailyReportComputation = await res.json();
+      setReportData(data);
     } catch (err: unknown) {
       toast({
         title: "Error",
@@ -137,128 +63,19 @@ function DailyReportContent() {
   useEffect(() => {
     fetchReportData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate]);
+  }, [selectedDate, selectedMovie, selectedShowTime]);
 
   useEffect(() => {
     setSelectedShowTime("all");
   }, [selectedMovie]);
 
-  const bookingBracketValues = useMemo(() => {
-    const values = new Set<string>();
-    bookings.forEach((b) => {
-      const v = extractBracketValue(b.seatIds || "");
-      if (v) values.add(v);
-    });
-    return values;
-  }, [bookings]);
-
-  // Report should include shows that are active OR referenced by bookings.
-  const relevantShows = useMemo(() => {
-    return shows.filter((s) => s.isActive || bookingBracketValues.has(s.id) || bookingBracketValues.has(s.showTime));
-  }, [shows, bookingBracketValues]);
-
-  const movieOptions = useMemo(() => {
-    return Array.from(new Set(relevantShows.map((s) => s.movieTitle))).sort((a, b) => a.localeCompare(b));
-  }, [relevantShows]);
-
-  const showTimeOptions = useMemo(() => {
-    const target = selectedMovie !== "all" ? relevantShows.filter((s) => s.movieTitle === selectedMovie) : relevantShows;
-    const unique = Array.from(new Set(target.map((s) => s.showTime)));
-    unique.sort((a, b) => parseShowTimeMinutes(a) - parseShowTimeMinutes(b));
-    return unique;
-  }, [relevantShows, selectedMovie]);
-
-  const resolveBookingShow = useCallback((seatIds: string) => {
-    const bracket = extractBracketValue(seatIds || "");
-
-    // New format: bracket contains showId
-    let show = bracket ? relevantShows.find((s) => s.id === bracket) : undefined;
-    // Backward compat: bracket contains showTime
-    if (!show && bracket) show = relevantShows.find((s) => s.showTime === bracket);
-
-    return {
-      bracketValue: bracket,
-      showId: show?.id,
-      movieTitle: show?.movieTitle,
-      showTime: show?.showTime || bracket,
-    };
-  }, [relevantShows]);
-
-  const showTimeReports = useMemo<ShowTimeSummary[]>(() => {
-    const targetShows = selectedMovie !== "all"
-      ? relevantShows.filter((s) => s.movieTitle === selectedMovie)
-      : relevantShows;
-
-    const uniqueShowtimes = Array.from(new Set(targetShows.map((s) => s.showTime)))
-      .sort((a, b) => parseShowTimeMinutes(a) - parseShowTimeMinutes(b));
-
-    const showtimesToRender = selectedShowTime !== "all"
-      ? [selectedShowTime]
-      : uniqueShowtimes;
-
-    return showtimesToRender.map((showTime) => {
-      const summary: Record<SeatClass, Omit<ClassSummaryRow, "classCode" | "ticketPrice">> = {
-        B: {
-          lifetimeTicketsSold: 0,
-          selectedMovieTicketsSold: 0,
-          todayTicketsSold: 0,
-          grossCollection: 0,
-        },
-        O: {
-          lifetimeTicketsSold: 0,
-          selectedMovieTicketsSold: 0,
-          todayTicketsSold: 0,
-          grossCollection: 0,
-        },
-      };
-
-      for (const booking of bookings) {
-        const seats = parseSeatIds(booking.seatIds || "");
-        if (!seats.length) continue;
-
-        const resolved = resolveBookingShow(booking.seatIds || "");
-        if (resolved.showTime !== showTime) continue;
-
-        const matchesSelectedMovie =
-          selectedMovie === "all" || resolved.movieTitle === selectedMovie;
-        const isSelectedDate = getBookingShowDate(booking) === selectedDate;
-
-        for (const seat of seats) {
-          const seatClass = resolveSeatClass(seat);
-          summary[seatClass].lifetimeTicketsSold += 1;
-
-          if (matchesSelectedMovie) {
-            summary[seatClass].selectedMovieTicketsSold += 1;
-          }
-
-          if (matchesSelectedMovie && isSelectedDate) {
-            summary[seatClass].todayTicketsSold += 1;
-          }
-        }
-      }
-
-      const rows = (["B", "O"] as const).map((classCode) => {
-        const todayTicketsSold = summary[classCode].todayTicketsSold;
-        const ticketPrice = CLASS_PRICES[classCode];
-        return {
-          classCode,
-          lifetimeTicketsSold: summary[classCode].lifetimeTicketsSold,
-          selectedMovieTicketsSold: summary[classCode].selectedMovieTicketsSold,
-          todayTicketsSold,
-          ticketPrice,
-          grossCollection: round2(todayTicketsSold * ticketPrice),
-        };
-      });
-
-      return { showTime, rows };
-    });
-  }, [bookings, relevantShows, resolveBookingShow, selectedDate, selectedMovie, selectedShowTime]);
-
-  const allReportRows = showTimeReports.flatMap((report) => report.rows);
-  const grandTotalLifetimeTickets = allReportRows.reduce((acc, row) => acc + row.lifetimeTicketsSold, 0);
-  const grandTotalSelectedMovieTickets = allReportRows.reduce((acc, row) => acc + row.selectedMovieTicketsSold, 0);
-  const grandTotalTodayTickets = allReportRows.reduce((acc, row) => acc + row.todayTicketsSold, 0);
-  const grandTotalGross = allReportRows.reduce((acc, row) => acc + row.grossCollection, 0);
+  const movieOptions = reportData?.movieOptions || [];
+  const showTimeOptions = reportData?.showTimeOptions || [];
+  const showTimeReports = reportData?.showTimeReports || [];
+  const grandTotalLifetimeTickets = reportData?.grandTotalLifetimeTickets || 0;
+  const grandTotalSelectedMovieTickets = reportData?.grandTotalSelectedMovieTickets || 0;
+  const grandTotalTodayTickets = reportData?.grandTotalTodayTickets || 0;
+  const grandTotalGross = reportData?.grandTotalGross || 0;
 
   const sanitizeFilenamePart = (s: string) => {
     return String(s || "")
@@ -386,9 +203,9 @@ function DailyReportContent() {
     return formatTime12Hour(selectedShowTime).toUpperCase();
   };
 
-  const municipalTax = round2(grandTotalGross * 0.10);
-  const netAmount = round2(grandTotalGross + municipalTax);
-  const distributorShare = round2(netAmount * 0.50);
+  const municipalTax = reportData?.municipalTax || 0;
+  const netAmount = reportData?.netAmount || 0;
+  const distributorShare = reportData?.distributorShare || 0;
   const municipalTaxDhsFils = splitDhsFils(municipalTax);
 
   return (
