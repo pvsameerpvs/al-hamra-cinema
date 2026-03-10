@@ -99,4 +99,22 @@
     margin: 0;
     padding: 0;
   }
+
+  body[data-print="daily-report"] {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  body[data-print="daily-report"] > :not(#daily-report-portal-root) {
+    display: none !important;
+  }
+
+  body[data-print="daily-report"] #daily-report-portal-root {
+    display: block !important;
+    position: static;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
 }

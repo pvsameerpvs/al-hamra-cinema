@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense, Fragment } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { MoveLeft, Loader2, FileText, Printer, Filter, PlaySquare, Clock, Download } from "lucide-react";
 import Link from "next/link";
@@ -83,6 +84,8 @@ function DailyReportContent() {
     new Date().toISOString().split("T")[0]
   );
   const [distributorName, setDistributorName] = useState<string>("");
+  const [printActive, setPrintActive] = useState(false);
+  const printPortalRef = useRef<HTMLElement | null>(null);
 
       const fetchReportData = async () => {
     setLoading(true);
@@ -220,22 +223,53 @@ function DailyReportContent() {
     reportData.push(showReport);
   });
 
+  const sanitizeFilenamePart = (s: string) => {
+    return String(s || "")
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
   const handlePrint = () => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (printActive) return;
+
     const prevTitle = document.title;
     const datePart = selectedDate ? formatDateDots(selectedDate) : "";
     const moviePart = selectedMovie === "all" ? "ALL MOVIES" : selectedMovie;
-    const showPart = selectedShowTime === "all" ? "ALL SHOW TIMES" : formatTimeDots(selectedShowTime);
-    const nextTitle = ["Daily Report", datePart, moviePart, showPart].filter(Boolean).join(" - ");
+    const nextTitle = sanitizeFilenamePart([datePart, moviePart].filter(Boolean).join(" - ")) || "Daily Report";
 
+    let created = false;
+    let portalEl = document.getElementById("daily-report-portal-root") as HTMLElement | null;
+    if (!portalEl) {
+      created = true;
+      portalEl = document.createElement("div");
+      portalEl.id = "daily-report-portal-root";
+      document.body.appendChild(portalEl);
+    }
+    printPortalRef.current = portalEl;
+
+    document.body.dataset.print = "daily-report";
     document.title = nextTitle;
+    setPrintActive(true);
 
+    let restored = false;
     const restore = () => {
-      document.title = prevTitle;
-      window.removeEventListener("afterprint", restore);
-    };
-    window.addEventListener("afterprint", restore);
+      if (restored) return;
+      restored = true;
 
-    window.print();
+      delete document.body.dataset.print;
+      document.title = prevTitle;
+      setPrintActive(false);
+
+      const el = printPortalRef.current;
+      if (created && el && el.parentNode) el.parentNode.removeChild(el);
+      if (created) printPortalRef.current = null;
+    };
+
+    window.addEventListener("afterprint", restore, { once: true });
+    window.setTimeout(restore, 30_000);
+    window.setTimeout(() => window.print(), 80);
   };
 
   const formatDateDots = (iso: string) => {
@@ -419,14 +453,15 @@ function DailyReportContent() {
         </div>
 
         {/* PRINTABLE REPORT AREA */}
-        <div id="daily-report-root" className="bg-white p-8 sm:p-12 print:p-0 border border-slate-200 shadow-sm print:border-none print:shadow-none min-h-[1056px] max-w-[816px] mx-auto text-black print:w-full print:max-w-none">
-          
-          {loading ? (
-            <div className="h-64 flex items-center justify-center print:hidden">
-              <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
-            </div>
-          ) : (
-            <div className="space-y-4">
+        {(() => {
+          const reportNode = (
+            <div className="bg-white p-8 sm:p-12 print:p-0 border border-slate-200 shadow-sm print:border-none print:shadow-none min-h-[1056px] max-w-[816px] mx-auto text-black print:w-full print:max-w-none">
+              {loading ? (
+                <div className="h-64 flex items-center justify-center print:hidden">
+                  <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+                </div>
+              ) : (
+                <div className="space-y-4">
               {/* Header */}
               <div className="border border-black p-4 text-center">
                 <h1 className="text-3xl font-bold text-red-600 uppercase tracking-wider print:text-red-600 print:!text-red-600 [-webkit-print-color-adjust:exact]">AL HAMRA CINEMA</h1>
@@ -552,10 +587,20 @@ function DailyReportContent() {
                 </div>
               </div>
 
+                </div>
+              )}
             </div>
-          )}
+          );
 
-        </div>
+          return (
+            <>
+              <div id="daily-report-root">{reportNode}</div>
+              {printActive && printPortalRef.current
+                ? createPortal(<div id="daily-report-print-root">{reportNode}</div>, printPortalRef.current)
+                : null}
+            </>
+          );
+        })()}
       </div>
       
       {/* Global Print Styles to make it look perfect when downloading PDF */}
