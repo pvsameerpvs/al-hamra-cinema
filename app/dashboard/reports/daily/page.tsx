@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense, Fragment } from "react";
 import { Sidebar } from "@/components/Sidebar";
-import { MoveLeft, Loader2, FileText, Printer, Filter, PlaySquare, Clock } from "lucide-react";
+import { MoveLeft, Loader2, FileText, Printer, Filter, PlaySquare, Clock, Download } from "lucide-react";
 import Link from "next/link";
 import { Booking, Show } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -58,7 +58,7 @@ type ShowReport = {
   showTime: string;
   classes: {
     B: ClassData;
-    D: ClassData;
+    O: ClassData;
   };
 };
 
@@ -82,6 +82,7 @@ function DailyReportContent() {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
+  const [distributorName, setDistributorName] = useState<string>("");
 
       const fetchReportData = async () => {
     setLoading(true);
@@ -186,7 +187,7 @@ function DailyReportContent() {
       showTime: st,
       classes: {
         B: { rate: 35, ticketsSold: 0, gross: 0 },
-        D: { rate: 30, ticketsSold: 0, gross: 0 },
+        O: { rate: 30, ticketsSold: 0, gross: 0 },
       }
     };
 
@@ -206,11 +207,11 @@ function DailyReportContent() {
              grandTotalTickets += 1;
              grandTotalGross += showReport.classes.B.rate;
           } else {
-             // Orchestra seats start with "O-"; treat any non-balcony as D
-             showReport.classes.D.ticketsSold += 1;
-             showReport.classes.D.gross += showReport.classes.D.rate;
+             // Orchestra seats start with "O-"; treat any non-balcony as O
+             showReport.classes.O.ticketsSold += 1;
+             showReport.classes.O.gross += showReport.classes.O.rate;
              grandTotalTickets += 1;
-             grandTotalGross += showReport.classes.D.rate;
+             grandTotalGross += showReport.classes.O.rate;
           }
         });
       }
@@ -220,7 +221,88 @@ function DailyReportContent() {
   });
 
   const handlePrint = () => {
+    const prevTitle = document.title;
+    const datePart = selectedDate ? formatDateDots(selectedDate) : "";
+    const moviePart = selectedMovie === "all" ? "ALL MOVIES" : selectedMovie;
+    const showPart = selectedShowTime === "all" ? "ALL SHOW TIMES" : formatTimeDots(selectedShowTime);
+    const nextTitle = ["Daily Report", datePart, moviePart, showPart].filter(Boolean).join(" - ");
+
+    document.title = nextTitle;
+
+    const restore = () => {
+      document.title = prevTitle;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+
     window.print();
+  };
+
+  const formatDateDots = (iso: string) => {
+    const m = String(iso || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    const year = m[1];
+    const month = String(Number(m[2]));
+    const day = String(Number(m[3]));
+    return `${day}.${month}.${year}`;
+  };
+
+  const formatTimeDots = (raw: string) => {
+    const t = formatTime12Hour(raw);
+    const noLead = t.startsWith("0") ? t.slice(1) : t;
+    return noLead.replace(":", ".").toUpperCase();
+  };
+
+  const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+  const handleDownloadJson = () => {
+    const payload = {
+      cinema_info: {
+        name: "AL HAMRA CINEMA",
+        date: selectedDate ? formatDateDots(selectedDate) : "",
+        movie_name: selectedMovie !== "all" ? selectedMovie : "",
+      },
+      collection_data: reportData.map((show) => ({
+        show_time: formatTimeDots(show.showTime),
+        entries: [
+          {
+            class: "B",
+            rate: show.classes.B.rate,
+            ticket_from: 0,
+            ticket_to: 0,
+            sold: show.classes.B.ticketsSold,
+            gross: show.classes.B.gross,
+          },
+          {
+            class: "O",
+            rate: show.classes.O.rate,
+            ticket_from: 0,
+            ticket_to: 0,
+            sold: show.classes.O.ticketsSold,
+            gross: show.classes.O.gross,
+          },
+        ],
+      })),
+      summary: {
+        grand_total_gross: grandTotalGross,
+        municipal_tax_10_percent: round2(grandTotalGross * 0.1),
+        net_amount: round2(grandTotalGross - grandTotalGross * 0.1),
+        distributor_name: distributorName,
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const fileDate = selectedDate || new Date().toISOString().split("T")[0];
+    a.download = `daily_report_${fileDate}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({ title: "Exported", description: "Daily report JSON downloaded." });
   };
 
   const getMovieDisplayName = () => {
@@ -306,12 +388,31 @@ function DailyReportContent() {
                 </select>
               </div>
 
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                <span className="text-xs font-semibold text-slate-400">Distributor</span>
+                <input
+                  type="text"
+                  value={distributorName}
+                  onChange={(e) => setDistributorName(e.target.value)}
+                  placeholder="Name"
+                  className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 outline-none w-44 placeholder:text-slate-400 placeholder:font-normal"
+                />
+              </div>
+
               <button
                 onClick={handlePrint}
                 className="flex items-center gap-2 bg-indigo-600 border border-indigo-700 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 shadow-md text-sm font-semibold transition-colors"
               >
                 <Printer className="w-4 h-4" />
                 Print / Download PDF
+              </button>
+
+              <button
+                onClick={handleDownloadJson}
+                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2 shadow-sm text-sm font-semibold transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Export JSON
               </button>
             </div>
           </div>
@@ -336,7 +437,7 @@ function DailyReportContent() {
               <div className="border border-black p-2 flex flex-col gap-1 font-bold text-sm uppercase">
                 <div className="flex justify-between">
                   <div>MOVIE NAME: <span className="underline ml-2">{getMovieDisplayName()}</span></div>
-                  <div>DATE: <span className="underline ml-2">{selectedDate ? new Date(selectedDate).toLocaleDateString("en-GB").replace(/\//g, ".") : ""}</span></div>
+                  <div>DATE: <span className="underline ml-2">{selectedDate ? formatDateDots(selectedDate) : ""}</span></div>
                 </div>
                 <div>SHOW TIME: <span className="underline ml-2">{getShowTimeDisplayName()}</span></div>
               </div>
@@ -370,14 +471,14 @@ function DailyReportContent() {
                         <td className="border-r border-black p-1.5 font-bold">{show.classes.B.ticketsSold}</td>
                         <td className="p-1.5 font-bold">{show.classes.B.gross}</td>
                       </tr>
-                      {/* Row D */}
+                      {/* Row O */}
                       <tr className="border-b border-black break-inside-avoid">
-                        <td className="border-r border-black p-1.5">D</td>
-                        <td className="border-r border-black p-1.5">{show.classes.D.rate}</td>
+                        <td className="border-r border-black p-1.5">O</td>
+                        <td className="border-r border-black p-1.5">{show.classes.O.rate}</td>
                         <td className="border-r border-black p-1.5">0</td>
                         <td className="border-r border-black p-1.5">0</td>
-                        <td className="border-r border-black p-1.5 font-bold">{show.classes.D.ticketsSold}</td>
-                        <td className="p-1.5 font-bold">{show.classes.D.gross}</td>
+                        <td className="border-r border-black p-1.5 font-bold">{show.classes.O.ticketsSold}</td>
+                        <td className="p-1.5 font-bold">{show.classes.O.gross}</td>
                       </tr>
                     </Fragment>
                   ))}
@@ -436,7 +537,14 @@ function DailyReportContent() {
               <div className="mt-6 flex flex-col gap-4 text-xs font-bold uppercase w-1/2">
                 <div className="flex justify-between items-end">
                   <span>DISTRIBUTOR&apos;S NAME :</span>
-                  <span className="border-b border-black flex-1 ml-2"></span>
+                  <input
+                    type="text"
+                    value={distributorName}
+                    onChange={(e) => setDistributorName(e.target.value)}
+                    placeholder=""
+                    spellCheck={false}
+                    className="border-b border-black flex-1 ml-2 min-h-[16px] text-center bg-transparent outline-none"
+                  />
                 </div>
                 <div className="flex justify-between items-end">
                   <span>DISTRIBUTOR&apos;S SHARE @ 50% ON NET AMOUNT DHS:</span>
