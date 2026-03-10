@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -9,13 +9,13 @@ import {
   Ticket,
   History,
   Bookmark,
-  LogOut,
   FileText,
 } from "lucide-react";
 
+import { LogoutButton } from "@/components/LogoutButton";
+
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [user, setUser] = useState<{ email: string; role: string } | null>(null);
 
   useEffect(() => {
@@ -26,11 +26,6 @@ export function Sidebar() {
       })
       .catch(() => {});
   }, []);
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-  };
 
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 z-20 flex flex-col shadow-sm hidden lg:flex">
@@ -134,13 +129,7 @@ export function Sidebar() {
             <p className="text-xs text-slate-400 capitalize">{user?.role || "Super User"}</p>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          title="Sign Out"
-          className="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+        <LogoutButton className="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0" />
       </div>
     </aside>
   );

@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { Booking, Seat, Show } from "@/lib/types";
 import { formatTime12Hour, isShowStartInPastDubai } from "@/lib/utils";
 import { ReceiptTicket } from "@/components/ReceiptTicket";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DashboardTopbar } from "@/components/DashboardTopbar";
 
 export default function PreBookingsPage() {
   return (
@@ -34,6 +36,7 @@ function PreBookingsContent() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedShowDate, setSelectedShowDate] = useState<string>("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Recompute time-based filtering without requiring a manual refresh.
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -90,10 +93,7 @@ function PreBookingsContent() {
       .catch(() => {});
   }, []);
 
-  const deleteBooking = async (bookingId: string) => {
-    const ok = window.confirm("Delete this booking? This cannot be undone.");
-    if (!ok) return;
-
+  const performDeleteBooking = async (bookingId: string): Promise<boolean> => {
     try {
       const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}`, {
         method: "DELETE",
@@ -104,13 +104,19 @@ function PreBookingsContent() {
       }
       toast({ title: "Deleted", description: "Booking removed." });
       await fetchPreBookings();
+      return true;
     } catch (err: unknown) {
       toast({
         title: "Delete failed",
         description: err instanceof Error ? err.message : "Unknown error",
         variant: "destructive",
       });
+      return false;
     }
+  };
+
+  const requestDeleteBooking = (bookingId: string) => {
+    setDeleteTargetId(bookingId);
   };
 
   const todayIso = new Date().toISOString().split("T")[0];
@@ -251,6 +257,7 @@ function PreBookingsContent() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
+      <DashboardTopbar />
       <Sidebar />
       <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <Link
@@ -397,7 +404,7 @@ function PreBookingsContent() {
                             {userRole === "admin" && (
                               <button
                                 type="button"
-                                onClick={() => deleteBooking(b.id)}
+                                onClick={() => requestDeleteBooking(b.id)}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 shadow-sm transition-colors hover:bg-red-100"
                                 title="Delete booking"
                               >
@@ -432,6 +439,23 @@ function PreBookingsContent() {
           />,
           document.body
         )}
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null);
+        }}
+        title="Delete booking?"
+        description="Are you sure you want to delete this booking? This cannot be undone."
+        confirmText="Yes, delete"
+        cancelText="No"
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!deleteTargetId) return false;
+          const ok = await performDeleteBooking(deleteTargetId);
+          return ok;
+        }}
+      />
     </div>
   );
 }

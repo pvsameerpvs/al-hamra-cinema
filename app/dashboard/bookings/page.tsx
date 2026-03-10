@@ -19,6 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/Sidebar";
 import { BookingsTable } from "@/components/BookingsTable";
 import { formatTime12Hour } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DashboardTopbar } from "@/components/DashboardTopbar";
 
 export default function BookingsHistoryPage() {
   return (
@@ -41,6 +43,7 @@ function BookingsHistoryContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("user");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const filteredBookings = bookings.filter(b => {
     if (!searchQuery) return true;
@@ -143,10 +146,7 @@ function BookingsHistoryContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMovie, selectedMonth, selectedDate]);
 
-  const deleteBooking = async (bookingId: string) => {
-    const ok = window.confirm("Delete this booking? This cannot be undone.");
-    if (!ok) return;
-
+  const performDeleteBooking = async (bookingId: string): Promise<boolean> => {
     try {
       const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}`, {
         method: "DELETE",
@@ -157,17 +157,24 @@ function BookingsHistoryContent() {
       }
       toast({ title: "Deleted", description: "Booking removed." });
       await fetchBookings();
+      return true;
     } catch (err: unknown) {
       toast({
         title: "Delete failed",
         description: err instanceof Error ? err.message : "Unknown error",
         variant: "destructive",
       });
+      return false;
     }
+  };
+
+  const requestDeleteBooking = (bookingId: string) => {
+    setDeleteTargetId(bookingId);
   };
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
+      <DashboardTopbar />
       <Sidebar />
       <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Back */}
@@ -298,10 +305,27 @@ function BookingsHistoryContent() {
             shows={shows}
             loading={loading}
             canDelete={userRole === "admin"}
-            onDelete={deleteBooking}
+            onDelete={requestDeleteBooking}
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null);
+        }}
+        title="Delete booking?"
+        description="Are you sure you want to delete this booking? This cannot be undone."
+        confirmText="Yes, delete"
+        cancelText="No"
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!deleteTargetId) return false;
+          const ok = await performDeleteBooking(deleteTargetId);
+          return ok;
+        }}
+      />
     </div>
   );
 }

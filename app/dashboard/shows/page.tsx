@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { formatTime12Hour } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DashboardTopbar } from "@/components/DashboardTopbar";
 
 let cachedShows: Show[] | null = null;
 
@@ -38,6 +40,7 @@ export default function ManageShowsPage() {
   const [isActive, setIsActive] = useState(true);
 
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // ── Role guard ──────────────────────────────────────────────────────────
@@ -142,24 +145,28 @@ export default function ManageShowsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this show?")) return;
-
+  const performDeleteShow = async (id: string): Promise<boolean> => {
     setActionLoading(true);
     try {
       const res = await fetch(`/api/shows/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete show");
       toast({ title: "Success", description: "Show deleted." });
       fetchShows();
+      return true;
     } catch (err) {
       toast({
         title: "Delete Failed",
         description: err instanceof Error ? err.message : "Network error",
         variant: "destructive",
       });
+      return false;
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleDelete = (id: string) => {
+    setDeleteTargetId(id);
   };
 
   // Show a blank loading screen while verifying role
@@ -173,6 +180,7 @@ export default function ManageShowsPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
+      <DashboardTopbar />
       <Sidebar />
       <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Back */}
@@ -401,6 +409,23 @@ export default function ManageShowsPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null);
+        }}
+        title="Delete show?"
+        description="Are you sure you want to delete this show? This cannot be undone."
+        confirmText="Yes, delete"
+        cancelText="No"
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!deleteTargetId) return false;
+          const ok = await performDeleteShow(deleteTargetId);
+          return ok;
+        }}
+      />
     </div>
   );
 }

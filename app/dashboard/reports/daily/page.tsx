@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Booking, Show } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { formatTime12Hour } from "@/lib/utils";
+import { DashboardTopbar } from "@/components/DashboardTopbar";
 
 function parseShowTimeMinutes(raw: string) {
   if (!raw) return Number.POSITIVE_INFINITY;
@@ -239,6 +240,7 @@ function DailyReportContent() {
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans print:bg-white print:min-h-0">
       <div className="print:hidden">
+        <DashboardTopbar />
         <Sidebar />
       </div>
 
