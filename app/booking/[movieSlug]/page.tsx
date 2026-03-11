@@ -1,11 +1,19 @@
 import { Sidebar } from "@/components/Sidebar";
-import { MoveLeft, Film, Clock } from "lucide-react";
+import { MoveLeft, Film, Clock, Shield } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { formatTime12Hour, isShowStartInPastDubai } from "@/lib/utils";
 import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
+
+const formatIsoDate = (iso: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
 
 export default async function MovieShowtimesPage({
   params,
@@ -15,13 +23,15 @@ export default async function MovieShowtimesPage({
   searchParams?: { date?: string };
 }) {
   const allShows = await fetchAllShows();
-  const activeShows = allShows.filter(s => s.isActive);
 
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
   const bookingDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
     ? searchParams.date
     : todayIso;
+  const activeShows = allShows.filter(
+    (s) => s.isActive && s.startDate <= bookingDateIso && s.endDate >= bookingDateIso
+  );
   const bookingDateLabel = new Date(`${bookingDateIso}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -36,6 +46,16 @@ export default async function MovieShowtimesPage({
   );
 
   const movieTitle = matchingShows.length > 0 ? matchingShows[0].movieTitle : params.movieSlug.replace(/-/g, ' ').toUpperCase();
+  const runSummary = matchingShows.length
+    ? matchingShows.reduce(
+        (acc, show) => {
+          acc.minStart = acc.minStart < show.startDate ? acc.minStart : show.startDate;
+          acc.maxEnd = acc.maxEnd > show.endDate ? acc.maxEnd : show.endDate;
+          return acc;
+        },
+        { minStart: matchingShows[0].startDate, maxEnd: matchingShows[0].endDate, rating: matchingShows[0].rating }
+      )
+    : null;
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
@@ -63,6 +83,11 @@ export default async function MovieShowtimesPage({
                 <p className="text-sm text-slate-400 mt-0.5">
                   Booking date: <strong className="text-slate-600">{bookingDateLabel}</strong>
                 </p>
+                {runSummary && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Runs {formatIsoDate(runSummary.minStart)} – {formatIsoDate(runSummary.maxEnd)} • Rated {runSummary.rating}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -98,6 +123,10 @@ export default async function MovieShowtimesPage({
                     <span className="text-2xl font-bold mb-2 text-slate-600 text-center">
                       {formatTime12Hour(show.showTime)}
                     </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-white text-slate-500">
+                      <Shield className="w-3 h-3 text-slate-400" />
+                      {show.rating}
+                    </span>
                     <span className="text-slate-500 font-medium text-sm text-center px-4">Booking disabled</span>
                   </div>
                 ) : (
@@ -113,6 +142,10 @@ export default async function MovieShowtimesPage({
                     <Clock className="w-8 h-8" />
                   </div>
                   <span className="text-2xl font-bold mb-2 text-slate-800 text-center">{formatTime12Hour(show.showTime)}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-white text-slate-600 mb-2">
+                    <Shield className="w-3 h-3 text-slate-400" />
+                    {show.rating}
+                  </span>
                   <span className="text-indigo-600 font-medium text-sm text-center px-4">Book Seats &rarr;</span>
                   </Link>
                 )

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Seat } from "@/lib/types";
+import { MovieRating, Seat } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ interface BookingDialogProps {
   showId?: string;
   showDate?: string;
   movieTitle?: string;
+  rating?: MovieRating;
 }
 
 export function BookingDialog({
@@ -38,6 +39,7 @@ export function BookingDialog({
   showId,
   showDate,
   movieTitle,
+  rating,
 }: BookingDialogProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -63,9 +65,9 @@ export function BookingDialog({
 
   const isSuccess = successType !== null;
   const activeSeats = isSuccess ? bookedSeats : seats;
-  const totalAmount = activeSeats.reduce((sum, s) => sum + s.price, 0);
-  const subtotal = ((totalAmount * 100) / 105).toFixed(2);
-  const vat = ((totalAmount * 5) / 105).toFixed(2);
+  const baseAmount = activeSeats.reduce((sum, s) => sum + s.price, 0);
+  const vatAmount = Number((baseAmount * 0.05).toFixed(2));
+  const totalAmount = Number((baseAmount + vatAmount).toFixed(2));
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
   const bookingShowDate = showDate && isoDatePattern.test(showDate) ? showDate : todayIso;
@@ -183,9 +185,9 @@ export function BookingDialog({
                   <strong className="text-amber-900">{showDateLabel} - {formatTime12Hour(showTime)}</strong>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-xs text-center font-semibold shadow-sm">
-                  Note: There is no pay-later option. Payment is always taken at booking time.
-                </div>
+                 <div className="bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-xs text-center font-semibold shadow-sm">
+                   Note: Rates shown (35 AED Balcony / 30 AED Orchestra) are before VAT. A 5% VAT is added at checkout.
+                 </div>
 
                 <div className="grid gap-2">
                   <label htmlFor="name" className="text-sm font-medium">
@@ -241,16 +243,16 @@ export function BookingDialog({
                 <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex flex-col gap-2 mt-2 shadow-sm">
                   <div className="flex justify-between items-center text-sm text-indigo-700">
                     <span>Subtotal:</span>
-                    <span>{subtotal} AED</span>
+                    <span>{baseAmount.toFixed(2)} AED</span>
                   </div>
                   <div className="flex justify-between items-center text-sm text-indigo-700">
                     <span>VAT (5%):</span>
-                    <span>{vat} AED</span>
+                    <span>{vatAmount.toFixed(2)} AED</span>
                   </div>
                   <div className="border-t border-indigo-200/60 my-1"></div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-indigo-800">Total Amount:</span>
-                    <span className="font-bold text-xl text-indigo-600">{totalAmount} AED</span>
+                     <span className="text-sm font-bold text-indigo-800">Total Amount (incl. VAT):</span>
+                     <span className="font-bold text-xl text-indigo-600">{totalAmount.toFixed(2)} AED</span>
                   </div>
                 </div>
               </div>
@@ -278,17 +280,17 @@ export function BookingDialog({
                   <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 w-full mb-6">
                     <div className="flex justify-between text-sm text-slate-500 mb-1">
                       <span>Subtotal:</span>
-                      <span>{subtotal} AED</span>
+                      <span>{baseAmount.toFixed(2)} AED</span>
                     </div>
                     <div className="flex justify-between text-sm text-slate-500 mb-2">
                       <span>VAT (5%):</span>
-                      <span>{vat} AED</span>
+                      <span>{vatAmount.toFixed(2)} AED</span>
                     </div>
-                    <div className="border-t border-slate-200 my-2"></div>
-                    <div className="flex justify-between font-bold text-slate-800 text-lg">
-                      <span>Total Paid:</span>
-                      <span>{totalAmount} AED</span>
-                    </div>
+                     <div className="border-t border-slate-200 my-2"></div>
+                     <div className="flex justify-between font-bold text-slate-800 text-lg">
+                       <span>Total Paid:</span>
+                       <span>{totalAmount.toFixed(2)} AED</span>
+                     </div>
                     <div className="flex justify-between text-xs text-slate-400 mt-1">
                       <span>Payment Method:</span>
                       <span className="uppercase">{paymentMethod}</span>
@@ -327,8 +329,8 @@ export function BookingDialog({
           customerPhone={phone}
           customerEmail={email}
           seats={bookedSeats}
-          totalAmount={totalAmount}
           paymentMethod={paymentMethod}
+          rating={rating}
         />,
         document.body
       )}

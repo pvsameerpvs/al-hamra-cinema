@@ -1,11 +1,19 @@
 import { SeatGrid } from "@/components/SeatGrid";
-import { MoveLeft } from "lucide-react";
+import { MoveLeft, Shield } from "lucide-react";
 import Link from "next/link";
 import { formatTime12Hour, isShowStartInPastDubai } from "@/lib/utils";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { HomeHeader } from "@/components/home/HomeHeader";
 
 export const revalidate = 0;
+
+const formatIsoDate = (iso: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
 
 export default async function ShowTimeBookingPage({
   params,
@@ -14,8 +22,16 @@ export default async function ShowTimeBookingPage({
   params: { movieSlug: string; showId: string };
   searchParams?: { date?: string };
 }) {
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
+    ? searchParams.date
+    : todayIso;
+
   const allShows = await fetchAllShows();
-  const activeShows = allShows.filter(s => s.isActive);
+  const activeShows = allShows.filter(
+    (s) => s.isActive && s.startDate <= showDateIso && s.endDate >= showDateIso
+  );
   
   // Find the exact show matching explicitly by ID
   const show = activeShows.find(s => s.id === params.showId);
@@ -35,11 +51,6 @@ export default async function ShowTimeBookingPage({
     );
   }
 
-  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
-  const todayIso = new Date().toISOString().split("T")[0];
-  const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
-    ? searchParams.date
-    : todayIso;
   const showDateLabel = new Date(`${showDateIso}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -92,6 +103,15 @@ export default async function ShowTimeBookingPage({
             <p className="text-slate-500 mt-2 text-sm">
               Select seats for <strong className="text-slate-700">{showDateLabel}</strong>.
             </p>
+            <div className="mt-3 flex justify-center">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-600">
+                <Shield className="w-3.5 h-3.5 text-slate-400" />
+                {show.rating}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              Run window: {formatIsoDate(show.startDate)} – {formatIsoDate(show.endDate)}
+            </p>
           </div>
         </section>
 
@@ -99,7 +119,7 @@ export default async function ShowTimeBookingPage({
           id="seats"
           className="mx-auto max-w-5xl px-4 md:px-6"
         >
-          <SeatGrid showId={show.id} showTime={show.showTime} showDate={showDateIso} movieTitle={show.movieTitle} />
+          <SeatGrid showId={show.id} showTime={show.showTime} showDate={showDateIso} movieTitle={show.movieTitle} movieRating={show.rating} />
         </section>
       </div>
     </div>

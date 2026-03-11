@@ -29,11 +29,16 @@ export interface RevenueLog {
   date: string;
 }
 
+export type MovieRating = "PG 13" | "PG 18" | "PG" | "G";
+
 export interface Show {
   id: string;
   movieTitle: string;
   showTime: string;
   isActive: boolean;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  rating: MovieRating;
 }
 
 export type ReservationStatus = "Active" | "Cancelled" | "Expired";

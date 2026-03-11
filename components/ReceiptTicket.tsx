@@ -1,5 +1,5 @@
 import React from "react";
-import { Seat } from "@/lib/types";
+import { MovieRating, Seat } from "@/lib/types";
 
 interface ReceiptTicketProps {
   movieTitle: string;
@@ -10,8 +10,9 @@ interface ReceiptTicketProps {
   customerPhone: string;
   customerEmail: string;
   seats: Seat[];
-  totalAmount: number;
+  totalAmount?: number;
   paymentMethod: string;
+  rating?: MovieRating;
 }
 
 export function ReceiptTicket({
@@ -24,6 +25,7 @@ export function ReceiptTicket({
   seats,
   totalAmount,
   paymentMethod = "CASH",
+  rating,
 }: ReceiptTicketProps) {
   const currentDate = new Date().toLocaleString("en-US", {
     month: "short",
@@ -32,6 +34,12 @@ export function ReceiptTicket({
     hour: "2-digit",
     minute: "2-digit",
   });
+  const baseAmount = seats.reduce((sum, seat) => sum + seat.price, 0);
+  const vatAmount = Number((baseAmount * 0.05).toFixed(2));
+  const resolvedTotalAmount =
+    typeof totalAmount === "number" && !Number.isNaN(totalAmount)
+      ? Number(totalAmount.toFixed(2))
+      : Number((baseAmount + vatAmount).toFixed(2));
 
   const showDateLabel = showDate
     ? new Date(`${showDate}T00:00:00`).toLocaleDateString("en-US", {
@@ -46,8 +54,11 @@ export function ReceiptTicket({
       {/* Header - Theater Details */}
       <div className="text-center mb-4">
         <h1 className="text-2xl font-bold uppercase tracking-wider mb-1">AL HAMRA CINEMA</h1>
-        <p className="text-xs font-semibold">Tel: 06-5650953</p>
+        <p className="text-xs font-semibold">Mobile: 056 800 3586 / 050 310 9855</p>
         <p className="text-xs">Email: alhamracinema21@gmail.com</p>
+        {rating && (
+          <p className="text-xs font-semibold mt-1">Rating: {rating}</p>
+        )}
       </div>
 
       <div className="border-t-2 border-dashed border-black my-3"></div>
@@ -128,16 +139,16 @@ export function ReceiptTicket({
       <div className="space-y-1 mb-6">
         <div className="flex justify-between text-sm">
           <span>Subtotal:</span>
-          <span>{((totalAmount * 100) / 105).toFixed(2)} AED</span>
+          <span>{baseAmount.toFixed(2)} AED</span>
         </div>
         <div className="flex justify-between text-sm font-semibold">
           <span>VAT (5%):</span>
-          <span>{((totalAmount * 5) / 105).toFixed(2)} AED</span>
+          <span>{vatAmount.toFixed(2)} AED</span>
         </div>
         <div className="border-t-2 border-black my-2"></div>
         <div className="flex justify-between text-xl font-bold">
           <span>TOTAL:</span>
-          <span>{totalAmount} AED</span>
+          <span>{resolvedTotalAmount.toFixed(2)} AED</span>
         </div>
         <div className="flex justify-between text-xs mt-2">
           <span>Payment Method:</span>
@@ -149,6 +160,9 @@ export function ReceiptTicket({
       <div className="text-center text-xs space-y-1">
         <p className="font-bold">THANK YOU FOR YOUR VISIT!</p>
         <p>Please retain this receipt</p>
+        <p className="font-semibold">Rating: {rating ?? "Not Rated"}</p>
+        <p>Outside food is not allowed.</p>
+        <p>Staff is not responsible for any loss of items.</p>
         <p>No refunds or exchanges</p>
         <p className="mt-4 break-all">***********************************</p>
       </div>

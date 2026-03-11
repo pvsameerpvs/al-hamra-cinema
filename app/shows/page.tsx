@@ -1,4 +1,4 @@
-import { MoveLeft, Film, Clock, Ticket } from "lucide-react";
+import { MoveLeft, Film, Clock, Ticket, Shield } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { formatTime12Hour } from "@/lib/utils";
@@ -6,19 +6,30 @@ import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
 
+const formatIsoDate = (iso: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
+
 export default async function PublicShowsPage({
   searchParams,
 }: {
   searchParams?: { date?: string };
 }) {
   const allShows = await fetchAllShows();
-  const activeShows = allShows.filter(s => s.isActive);
 
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
   const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
     ? searchParams.date
     : todayIso;
+
+  const activeShows = allShows.filter(
+    (s) => s.isActive && s.startDate <= showDateIso && s.endDate >= showDateIso
+  );
 
   const todayDate = new Date(`${showDateIso}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
@@ -71,19 +82,28 @@ export default async function PublicShowsPage({
                   <Film className="w-32 h-32 text-indigo-500 -mr-8 -mt-8" />
                 </div>
                 
-                <div className="flex justify-between items-start mb-6 relative z-10">
+                <div className="flex justify-between items-start mb-6 relative z-10 gap-3">
                   <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
                     <Clock className="w-6 h-6" />
                   </div>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                    Booking Open
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                      Booking Open
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-white text-slate-600">
+                      <Shield className="w-3 h-3 text-slate-400" />
+                      {show.rating}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="relative z-10 mt-auto">
                   <h3 className="text-2xl font-bold mb-2 text-slate-800 group-hover:text-indigo-600 transition-colors">
                     {formatTime12Hour(show.showTime)}
                   </h3>
+                  <p className="text-xs text-slate-400 mb-2">
+                    Runs {formatIsoDate(show.startDate)} – {formatIsoDate(show.endDate)}
+                  </p>
                   <div className="flex items-center gap-2 text-slate-500">
                     <Film className="w-4 h-4" />
                     <span className="font-medium text-sm line-clamp-1">{show.movieTitle}</span>

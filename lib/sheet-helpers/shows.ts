@@ -1,5 +1,5 @@
 import { sheets, SPREADSHEET_ID } from "../google";
-import { Show } from "../types";
+import { MovieRating, Show } from "../types";
 import { isMockMode, mockStore } from "./shared";
 
 let cachedShows: Show[] | null = null;
@@ -19,18 +19,29 @@ export async function fetchAllShows(): Promise<Show[]> {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: "shows!A2:D",
+      range: "shows!A2:G",
     });
 
     const rows = response.data.values;
     if (!rows || rows.length === 0) return [];
 
-    const builtShows = rows.map((row) => ({
-      id: row[0],
-      movieTitle: row[1],
-      showTime: row[2],
-      isActive: row[3] === "TRUE",
-    }));
+    const todayIso = new Date().toISOString().split("T")[0];
+    const builtShows = rows.map((row) => {
+      const startDate = row[4] || todayIso;
+      const endDate = row[5] || startDate;
+      const ratingRaw = (row[6] || "PG 13").toUpperCase();
+      const allowedRatings: MovieRating[] = ["PG 13", "PG 18", "PG", "G"];
+      const rating = (allowedRatings.find((r) => r === ratingRaw) || "PG 13") as MovieRating;
+      return {
+        id: row[0],
+        movieTitle: row[1],
+        showTime: row[2],
+        isActive: row[3] === "TRUE",
+        startDate,
+        endDate,
+        rating,
+      } satisfies Show;
+    });
 
     cachedShows = builtShows;
     lastShowFetch = Date.now();
@@ -50,11 +61,19 @@ export async function createShow(show: Show) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: "shows!A:D",
+    range: "shows!A:G",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [[show.id, show.movieTitle, show.showTime, show.isActive ? "TRUE" : "FALSE"]],
+      values: [[
+        show.id,
+        show.movieTitle,
+        show.showTime,
+        show.isActive ? "TRUE" : "FALSE",
+        show.startDate,
+        show.endDate,
+        show.rating,
+      ]],
     },
   });
 }
@@ -81,25 +100,43 @@ export async function updateShow(showId: string, updatedShow: Partial<Show>) {
 
   const currentShowRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `shows!A${exactRow}:D${exactRow}`,
+    range: `shows!A${exactRow}:G${exactRow}`,
   });
 
   const currentRow = currentShowRes.data.values?.[0];
   if (!currentRow) throw new Error(`Row data for ${showId} not found`);
+
+  const allowedRatings: MovieRating[] = ["PG 13", "PG 18", "PG", "G"];
+  const safeRating = (value?: string) => {
+    if (!value) return currentRow[6] || "PG 13";
+    const normalized = value.toUpperCase();
+    return allowedRatings.includes(normalized as MovieRating) ? normalized : "PG 13";
+  };
 
   const mergedShow = {
     id: showId,
     movieTitle: updatedShow.movieTitle !== undefined ? updatedShow.movieTitle : currentRow[1],
     showTime: updatedShow.showTime !== undefined ? updatedShow.showTime : currentRow[2],
     isActive: updatedShow.isActive !== undefined ? (updatedShow.isActive ? "TRUE" : "FALSE") : currentRow[3],
+    startDate: updatedShow.startDate !== undefined ? updatedShow.startDate : currentRow[4],
+    endDate: updatedShow.endDate !== undefined ? updatedShow.endDate : currentRow[5],
+    rating: safeRating(updatedShow.rating),
   };
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `shows!A${exactRow}:D${exactRow}`,
+    range: `shows!A${exactRow}:G${exactRow}`,
     valueInputOption: "RAW",
     requestBody: {
-      values: [[mergedShow.id, mergedShow.movieTitle, mergedShow.showTime, mergedShow.isActive]],
+      values: [[
+        mergedShow.id,
+        mergedShow.movieTitle,
+        mergedShow.showTime,
+        mergedShow.isActive,
+        mergedShow.startDate,
+        mergedShow.endDate,
+        mergedShow.rating,
+      ]],
     },
   });
 }

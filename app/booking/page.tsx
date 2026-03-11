@@ -1,10 +1,18 @@
 import { Sidebar } from "@/components/Sidebar";
-import { MoveLeft, Film, Ticket } from "lucide-react";
+import { MoveLeft, Film, Ticket, Shield } from "lucide-react";
 import Link from "next/link";
 import { fetchAllShows } from "@/lib/sheetHelpers";
 import { BookingDateBar } from "@/components/BookingDateBar";
 
 export const revalidate = 0;
+
+const formatIsoDate = (iso: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
 
 export default async function BookingSelectionPage({
   searchParams,
@@ -12,13 +20,15 @@ export default async function BookingSelectionPage({
   searchParams?: { date?: string };
 }) {
   const allShows = await fetchAllShows();
-  const activeShows = allShows.filter(s => s.isActive);
 
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
   const bookingDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
     ? searchParams.date
     : todayIso;
+  const activeShows = allShows.filter(
+    (s) => s.isActive && s.startDate <= bookingDateIso && s.endDate >= bookingDateIso
+  );
   const bookingDateLabel = new Date(`${bookingDateIso}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -26,14 +36,23 @@ export default async function BookingSelectionPage({
     day: "numeric",
   });
 
-  // Get unique movies
-  const uniqueMoviesMap = new Map<string, typeof activeShows[0]>();
+  // Aggregate shows per movie to display campaign details
+  const movieAggregate = new Map<string, { title: string; rating: string; minStart: string; maxEnd: string }>();
   for (const show of activeShows) {
-    if (!uniqueMoviesMap.has(show.movieTitle)) {
-      uniqueMoviesMap.set(show.movieTitle, show);
+    const existing = movieAggregate.get(show.movieTitle);
+    if (!existing) {
+      movieAggregate.set(show.movieTitle, {
+        title: show.movieTitle,
+        rating: show.rating,
+        minStart: show.startDate,
+        maxEnd: show.endDate,
+      });
+    } else {
+      existing.minStart = existing.minStart < show.startDate ? existing.minStart : show.startDate;
+      existing.maxEnd = existing.maxEnd > show.endDate ? existing.maxEnd : show.endDate;
     }
   }
-  const uniqueMovies = Array.from(uniqueMoviesMap.values());
+  const uniqueMovies = Array.from(movieAggregate.values());
 
   return (
     <div className="min-h-screen bg-[#f7f8fc] font-sans">
@@ -71,7 +90,7 @@ export default async function BookingSelectionPage({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {uniqueMovies.length > 0 ? uniqueMovies.map((show) => {
-              const movieSlug = show.movieTitle.replace(/\s+/g, '-').toLowerCase();
+              const movieSlug = show.title.replace(/\s+/g, '-').toLowerCase();
               return (
                 <Link
                   key={movieSlug}
@@ -84,7 +103,12 @@ export default async function BookingSelectionPage({
                   <div className="w-16 h-16 mb-4 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
                     <Film className="w-8 h-8" />
                   </div>
-                  <span className="text-xl font-bold mb-2 text-slate-800 text-center">{show.movieTitle}</span>
+                  <span className="text-xl font-bold mb-1 text-slate-800 text-center">{show.title}</span>
+                  <p className="text-xs text-slate-400 mb-2">Runs {formatIsoDate(show.minStart)} – {formatIsoDate(show.maxEnd)}</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-slate-200 bg-white text-slate-600 mb-2">
+                    <Shield className="w-3 h-3 text-slate-400" />
+                    {show.rating}
+                  </span>
                   <span className="text-indigo-600 font-medium text-sm text-center line-clamp-1 px-4">View Show Times &rarr;</span>
                 </Link>
               )

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Seat } from "@/lib/types";
+import { MovieRating, Seat } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -15,11 +15,13 @@ export function SeatGrid({
   showId,
   showDate,
   movieTitle,
+  movieRating,
 }: {
   showTime?: string;
   showId?: string;
   showDate?: string;
   movieTitle?: string;
+  movieRating?: MovieRating;
 }) {
   const cacheKey = `${showId || showTime || "all"}::${showDate || "today"}`;
   const cachedData = seatCache[cacheKey];
@@ -266,6 +268,7 @@ export function SeatGrid({
         showId={showId || ""}
         showDate={showDate}
         movieTitle={movieTitle}
+        rating={movieRating}
       />
     </div>
   );
