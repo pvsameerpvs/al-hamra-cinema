@@ -59,8 +59,8 @@ export async function GET() {
     // ── Step 5: seed default users ────────────────────────────────────────
     const now = new Date().toISOString();
     const defaultUsers = [
-      ["admin", "admin@321", "admin", now],
-      ["user",  "user@123",  "user",  now],
+      ["alhamra1992", "1992", "admin", now],
+      ["amir1992",  "Alhamra1992",  "user",  now],
     ];
 
     await sheets.spreadsheets.values.append({
