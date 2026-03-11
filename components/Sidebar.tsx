@@ -9,7 +9,7 @@ import {
   Ticket,
   History,
   Bookmark,
-  FileText,
+ 
 } from "lucide-react";
 
 import { LogoutButton } from "@/components/LogoutButton";
