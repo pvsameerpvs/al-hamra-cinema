@@ -327,7 +327,6 @@ export function BookingDialog({
           showDate={bookingShowDate}
           customerName={name}
           customerPhone={phone}
-          customerEmail={email}
           seats={bookedSeats}
           paymentMethod={paymentMethod}
           rating={rating}

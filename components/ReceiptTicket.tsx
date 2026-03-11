@@ -8,7 +8,6 @@ interface ReceiptTicketProps {
   showDate?: string;
   customerName: string;
   customerPhone: string;
-  customerEmail: string;
   seats: Seat[];
   totalAmount?: number;
   paymentMethod: string;
@@ -21,7 +20,6 @@ export function ReceiptTicket({
   showDate,
   customerName,
   customerPhone,
-  customerEmail,
   seats,
   totalAmount,
   paymentMethod = "CASH",
@@ -54,8 +52,8 @@ export function ReceiptTicket({
       {/* Header - Theater Details */}
       <div className="text-center mb-4">
         <h1 className="text-2xl font-bold uppercase tracking-wider mb-1">AL HAMRA CINEMA</h1>
+        <p className="text-xs font-semibold mb-1">TRN: 100314022300003</p>
         <p className="text-xs font-semibold">Mobile: 056 800 3586 / 050 310 9855</p>
-        <p className="text-xs">Email: alhamracinema21@gmail.com</p>
         {rating && (
           <p className="text-xs font-semibold mt-1">Rating: {rating}</p>
         )}
@@ -73,10 +71,6 @@ export function ReceiptTicket({
         <div className="flex justify-between">
           <span>Phone:</span>
           <span className="text-right">{customerPhone}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Email:</span>
-          <span className="text-[10px] break-all max-w-[150px] text-right">{customerEmail}</span>
         </div>
       </div>
 

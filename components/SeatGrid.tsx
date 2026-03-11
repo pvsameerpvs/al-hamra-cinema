@@ -142,9 +142,9 @@ export function SeatGrid({
             let seatStyle = "";
 
             if (seat.status === "Booked" || seat.status === "Reserved") {
-              seatStyle = "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed";
+              seatStyle = "bg-red-500 border border-red-600 text-white cursor-not-allowed";
             } else if (isSelected) {
-              seatStyle = "bg-red-500 border border-red-600 text-white hover:bg-red-600 shadow-sm";
+              seatStyle = "bg-indigo-600 border border-indigo-700 text-white hover:bg-indigo-700 shadow-sm";
             } else {
               seatStyle = "bg-white border border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50";
             }
@@ -208,11 +208,11 @@ export function SeatGrid({
             <span className="text-sm font-medium text-slate-600">Available</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-sm bg-red-500 border border-red-600 shrink-0"></div>
+            <div className="w-4 h-4 rounded-sm bg-indigo-600 border border-indigo-700 shrink-0"></div>
             <span className="text-sm font-medium text-slate-600">Selected</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-sm bg-slate-100 border border-slate-200 shrink-0"></div>
+            <div className="w-4 h-4 rounded-sm bg-red-500 border border-red-600 shrink-0"></div>
             <span className="text-sm font-medium text-slate-600">Booked</span>
           </div>
         </div>

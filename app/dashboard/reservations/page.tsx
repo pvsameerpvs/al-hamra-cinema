@@ -433,7 +433,6 @@ function PreBookingsContent() {
             showDate={printPayload.showDate}
             customerName={printPayload.customerName}
             customerPhone={printPayload.customerPhone}
-            customerEmail={printPayload.customerEmail}
             seats={printPayload.seats}
             totalAmount={printPayload.totalAmount}
             paymentMethod={printPayload.paymentMethod}
