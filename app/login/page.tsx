@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!res.ok) {
@@ -56,13 +56,13 @@ export default function LoginPage() {
         <div className="p-8">
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-1.5">Email *</label>
+              <label className="text-sm font-semibold text-slate-700 block mb-1.5">Username *</label>
               <Input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@alhamra.com"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin"
                 className="h-11 rounded-xl bg-slate-50 focus:ring-indigo-500"
               />
             </div>

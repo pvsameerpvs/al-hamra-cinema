@@ -20,7 +20,7 @@ export async function GET() {
       header: rows[0] || null,
       dataRows: rows.slice(1).map((r, i) => ({
         rowIndex: i + 2,
-        email: r[0] || "(empty)",
+        username: r[0] || "(empty)",
         passwordLength: r[1]?.length || 0,
         passwordPreview: r[1] ? `${r[1].slice(0, 3)}***` : "(empty)",
         role: r[2] || "(empty)",

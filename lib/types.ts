@@ -59,7 +59,7 @@ export interface Reservation {
 export type UserRole = "admin" | "user";
 
 export interface User {
-  email: string;     // Column A — unique identifier / login username
+  username: string;  // Column A — unique identifier / login username
   password: string;  // Column B — plain text (or hashed in future)
   role: UserRole;    // Column C — "admin" | "user"
   createdAt: string; // Column D — ISO 8601 timestamp

@@ -2,14 +2,14 @@ import { sheets, SPREADSHEET_ID } from "../google";
 import { User, UserRole } from "../types";
 
 const USERS_SHEET_RANGE = "users!A2:D";
-const USERS_HEADER = ["email", "password", "role", "createdAt"];
+const USERS_HEADER = ["username", "password", "role", "createdAt"];
 
 export { USERS_HEADER };
 
 export async function getUserByCredentials(
-  emailStr: string,
+  usernameStr: string,
   passwordStr: string
-): Promise<{ email: string; role: string } | null> {
+): Promise<{ username: string; role: string } | null> {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -19,9 +19,9 @@ export async function getUserByCredentials(
     const rows = response.data.values;
     if (!rows || rows.length === 0) return null;
 
-    const row = rows.find((r) => (r[0] || "").trim() === emailStr && r[1] === passwordStr);
+    const row = rows.find((r) => (r[0] || "").trim() === usernameStr && r[1] === passwordStr);
     if (row) {
-      return { email: row[0].trim(), role: row[2] || "user" };
+      return { username: row[0].trim(), role: row[2] || "user" };
     }
   } catch (error: unknown) {
     if (error instanceof Error && error.message.includes("Unable to parse range")) {
@@ -42,7 +42,7 @@ export async function getAllUsers(): Promise<User[]> {
     });
     const rows = res.data.values || [];
     return rows.map((r) => ({
-      email: r[0] || "",
+      username: r[0] || "",
       password: r[1] || "",
       role: (r[2] as UserRole) || "user",
       createdAt: r[3] || "",
@@ -63,22 +63,22 @@ export async function createUser(user: Omit<User, "createdAt">): Promise<void> {
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [[newUser.email, newUser.password, newUser.role, newUser.createdAt]],
+      values: [[newUser.username, newUser.password, newUser.role, newUser.createdAt]],
     },
   });
 }
 
 export async function updateUser(
-  email: string,
+  username: string,
   updates: Partial<Pick<User, "password" | "role">>
 ): Promise<void> {
   const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: "users!A:A",
   });
-  const emails = idRes.data.values?.map((r) => r[0]) || [];
-  const rowIndex = emails.indexOf(email);
-  if (rowIndex === -1) throw new Error(`User ${email} not found`);
+  const usernames = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = usernames.indexOf(username);
+  if (rowIndex === -1) throw new Error(`User ${username} not found`);
 
   const sheetRow = rowIndex + 1;
 
@@ -89,7 +89,7 @@ export async function updateUser(
   const cur = curRes.data.values?.[0] || [];
 
   const merged = [
-    cur[0] || email,
+    cur[0] || username,
     updates.password !== undefined ? updates.password : cur[1] || "",
     updates.role !== undefined ? updates.role : cur[2] || "user",
     cur[3] || new Date().toISOString(),
@@ -103,14 +103,14 @@ export async function updateUser(
   });
 }
 
-export async function deleteUser(email: string): Promise<void> {
+export async function deleteUser(username: string): Promise<void> {
   const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: "users!A:A",
   });
-  const emails = idRes.data.values?.map((r) => r[0]) || [];
-  const rowIndex = emails.indexOf(email);
-  if (rowIndex === -1) throw new Error(`User ${email} not found`);
+  const usernames = idRes.data.values?.map((r) => r[0]) || [];
+  const rowIndex = usernames.indexOf(username);
+  if (rowIndex === -1) throw new Error(`User ${username} not found`);
 
   const sheetRow = rowIndex + 1;
 

@@ -16,7 +16,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ username: string; role: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -122,10 +122,10 @@ export function Sidebar() {
       <div className="px-4 py-4 border-t border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-3 px-2 flex-1 overflow-hidden">
           <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 uppercase">
-            {user?.email?.[0] || "A"}
+            {user?.username?.[0] || "A"}
           </div>
           <div className="overflow-hidden">
-            <p className="text-xs font-semibold text-slate-700 truncate">{user?.email || "Admin"}</p>
+            <p className="text-xs font-semibold text-slate-700 truncate">{user?.username || "Admin"}</p>
             <p className="text-xs text-slate-400 capitalize">{user?.role || "Super User"}</p>
           </div>
         </div>

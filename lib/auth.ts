@@ -13,7 +13,7 @@ export async function encrypt(payload: Record<string, unknown>) {
 }
 
 interface SessionPayload {
-  user: { email: string; role: string };
+  user: { username: string; role: string };
   expires: string;
 }
 
@@ -34,7 +34,7 @@ export async function getSession() {
   return await decrypt(session);
 }
 
-export async function setSession(user: { email: string; role: string }) {
+export async function setSession(user: { username: string; role: string }) {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session = await encrypt({ user, expires });
 

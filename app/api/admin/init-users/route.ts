@@ -7,7 +7,7 @@ import { USERS_HEADER } from "@/lib/sheetHelpers";
  *
  * Initialises the "users" sheet table:
  *  1. Creates the "users" tab if it does not already exist.
- *  2. Writes the header row: email | password | role | createdAt
+ *  2. Writes the header row: username | password | role | createdAt
  *  3. Clears any stale data rows.
  *  4. Seeds the two default accounts (admin + user).
  */
@@ -59,8 +59,8 @@ export async function GET() {
     // ── Step 5: seed default users ────────────────────────────────────────
     const now = new Date().toISOString();
     const defaultUsers = [
-      ["admin@alhamra.com", "admin@321", "admin", now],
-      ["user@alhamra.com",  "user@123",  "user",  now],
+      ["admin", "admin@321", "admin", now],
+      ["user",  "user@123",  "user",  now],
     ];
 
     await sheets.spreadsheets.values.append({
@@ -80,13 +80,13 @@ export async function GET() {
       schema: {
         sheet: "users",
         columns: {
-          A: "email      — unique login identifier",
+          A: "username   — unique login identifier",
           B: "password   — plain-text (hash in production)",
           C: "role       — \"admin\" | \"user\"",
           D: "createdAt  — ISO 8601 timestamp",
         },
       },
-      seededUsers: defaultUsers.map(([email, , role]) => ({ email, role })),
+      seededUsers: defaultUsers.map(([username, , role]) => ({ username, role })),
     });
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);

@@ -4,21 +4,21 @@ import { setSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const { username, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+    if (!username || !password) {
+      return NextResponse.json({ error: "Username and password required" }, { status: 400 });
     }
 
-    const user = await getUserByCredentials(email, password);
+    const user = await getUserByCredentials(username, password);
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    await setSession({ email: user.email, role: user.role });
+    await setSession({ username: user.username, role: user.role });
 
-    return NextResponse.json({ success: true, user: { email: user.email, role: user.role } });
+    return NextResponse.json({ success: true, user: { username: user.username, role: user.role } });
   } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
