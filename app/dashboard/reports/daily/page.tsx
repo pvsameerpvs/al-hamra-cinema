@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { Sidebar } from "@/components/Sidebar";
-import { MoveLeft, Loader2, FileText, Printer, Filter, PlaySquare, Clock, Download } from "lucide-react";
+import { MoveLeft, FileText, Printer, Filter, PlaySquare, Clock, Download } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { formatTime12Hour } from "@/lib/utils";
@@ -16,7 +16,7 @@ function round2(n: number) {
 
 export default function DailyReportPage() {
   return (
-    <Suspense fallback={<div className="p-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<div className="p-16 flex justify-center"><div className="theme-loader" /></div>}>
       <DailyReportContent />
     </Suspense>
   );
@@ -209,7 +209,8 @@ function DailyReportContent() {
   const municipalTaxDhsFils = splitDhsFils(municipalTax);
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] font-sans print:bg-white print:min-h-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 font-sans print:bg-white print:min-h-0 selection:bg-indigo-100">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none print:hidden" />
       <div className="print:hidden">
         <DashboardTopbar />
         <Sidebar />
@@ -312,8 +313,9 @@ function DailyReportContent() {
           const reportNode = (
             <div className="bg-white p-8 sm:p-12 print:p-0 border border-slate-200 shadow-sm print:border-none print:shadow-none min-h-[1056px] max-w-[816px] mx-auto text-black print:w-full print:max-w-none">
               {loading ? (
-                <div className="h-64 flex items-center justify-center print:hidden">
-                  <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+                <div className="h-64 flex flex-col items-center justify-center print:hidden">
+                  <div className="theme-loader mb-4" />
+                  <p className="text-slate-500 font-bold tracking-tight">Generating report...</p>
                 </div>
               ) : (
                 <div className="space-y-4">

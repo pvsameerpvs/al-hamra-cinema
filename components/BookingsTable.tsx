@@ -1,4 +1,4 @@
-import { User, Phone, Mail, Ticket, CreditCard, CalendarDays, History, Loader2, Trash2 } from "lucide-react";
+import { User, Phone, Mail, Ticket, CreditCard, CalendarDays, History, Trash2 } from "lucide-react";
 import { Booking, Show } from "@/lib/types";
 
 interface BookingsTableProps {
@@ -12,9 +12,9 @@ interface BookingsTableProps {
 export function BookingsTable({ bookings, shows, loading, canDelete, onDelete }: BookingsTableProps) {
   if (loading) {
     return (
-      <div className="p-16 flex flex-col items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-4" />
-        <p className="text-slate-400 text-sm">Loading booking history…</p>
+      <div className="p-20 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="theme-loader mb-8" />
+        <p className="text-slate-500 font-bold tracking-tight">Loading booking history...</p>
       </div>
     );
   }

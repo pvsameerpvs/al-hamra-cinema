@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   MoveLeft,
-  Loader2,
   History,
   Filter,
   Calendar,
@@ -24,7 +23,7 @@ import { DashboardTopbar } from "@/components/DashboardTopbar";
 
 export default function BookingsHistoryPage() {
   return (
-    <Suspense fallback={<div className="p-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>}>
+    <Suspense fallback={<div className="p-16 flex justify-center"><div className="theme-loader" /></div>}>
       <BookingsHistoryContent />
     </Suspense>
   );
@@ -173,7 +172,8 @@ function BookingsHistoryContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 font-sans selection:bg-indigo-100">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
       <DashboardTopbar />
       <Sidebar />
       <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">

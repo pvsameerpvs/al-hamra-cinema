@@ -43,7 +43,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 selection:bg-indigo-100 flex items-center justify-center p-4">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-indigo-100 overflow-hidden border border-slate-100">
         <div className="bg-indigo-600 p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full translate-x-12 -translate-y-12" />

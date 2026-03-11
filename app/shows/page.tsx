@@ -39,7 +39,8 @@ export default async function PublicShowsPage({
   });
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 selection:bg-indigo-100 font-sans">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
         {/* Back */}
         <Link

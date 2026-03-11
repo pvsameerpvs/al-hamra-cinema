@@ -7,7 +7,6 @@ import { RevenueChart } from "@/components/RevenueChart";
 import { Sidebar } from "@/components/Sidebar";
 import { LogoutButton } from "@/components/LogoutButton";
 import {
-  Loader2,
   Ticket,
   RefreshCw,
   Bell,
@@ -35,7 +34,7 @@ let cachedStats: DashboardStats | null = null;
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="p-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>}>
+    <Suspense fallback={<div className="p-16 flex justify-center"><div className="theme-loader" /></div>}>
       <DashboardContent />
     </Suspense>
   );
@@ -116,12 +115,10 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#f7f8fc]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-          </div>
-          <p className="text-slate-500 font-medium">Loading dashboard…</p>
+          <div className="theme-loader mb-4" />
+          <p className="text-slate-600 font-bold tracking-tight md:text-lg">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -129,7 +126,7 @@ function DashboardContent() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#f7f8fc]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30">
         <div className="bg-white border border-red-100 rounded-2xl p-8 shadow text-center max-w-sm">
           <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">⚠️</span>
@@ -150,7 +147,8 @@ function DashboardContent() {
   if (!stats) return null;
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 font-sans selection:bg-indigo-100">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
       <Sidebar />
 
       {/* Main Content */}

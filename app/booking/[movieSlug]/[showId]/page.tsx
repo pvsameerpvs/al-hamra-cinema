@@ -38,7 +38,8 @@ export default async function ShowTimeBookingPage({
 
   if (!show) {
     return (
-      <div className="min-h-screen bg-[#f7f8fc] font-sans">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 selection:bg-indigo-100 font-sans">
+        <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
         <HomeHeader />
         <div className="flex flex-col items-center justify-center p-16 pt-32">
           <h2 className="text-xl font-bold text-slate-800 mb-2">Show Not Found</h2>
@@ -64,7 +65,8 @@ export default async function ShowTimeBookingPage({
 
   if (bookingClosed) {
     return (
-      <div className="min-h-screen bg-[#f7f8fc] font-sans">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 selection:bg-indigo-100 font-sans">
+        <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
         <HomeHeader />
         <div className="flex flex-col items-center justify-center p-16 pt-32 text-center">
           <h2 className="text-xl font-bold text-slate-800 mb-2">Booking Closed</h2>
@@ -80,7 +82,8 @@ export default async function ShowTimeBookingPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] font-sans pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 selection:bg-indigo-100 font-sans pb-20">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
       <HomeHeader />
 
       <div className="mx-auto w-full max-w-7xl pt-24 md:pt-28">

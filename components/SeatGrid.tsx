@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { BookingDialog } from "./BookingDialog";
-import { Loader2 } from "lucide-react";
+
 
 const seatCache: Record<string, { data: Seat[], timestamp: number }> = {};
 
@@ -95,9 +95,9 @@ export function SeatGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
-        <p className="mt-4 text-slate-500 font-medium animate-pulse">Loading seat map...</p>
+      <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
+        <div className="theme-loader mb-8" />
+        <p className="mt-4 text-slate-500 font-bold tracking-tight animate-pulse">Loading seat map...</p>
       </div>
     );
   }

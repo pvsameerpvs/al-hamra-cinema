@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { MoveLeft, Loader2, Search, CalendarDays, X, Ticket, Trash2 } from "lucide-react";
+import { MoveLeft, Search, CalendarDays, X, Ticket, Trash2 } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { useToast } from "@/hooks/use-toast";
 import type { Booking, Seat, Show } from "@/lib/types";
@@ -17,7 +17,7 @@ export default function PreBookingsPage() {
     <Suspense
       fallback={
         <div className="p-16 flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          <div className="theme-loader" />
         </div>
       }
     >
@@ -256,7 +256,8 @@ function PreBookingsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30 font-sans selection:bg-indigo-100">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none" />
       <DashboardTopbar />
       <Sidebar />
       <div className="lg:pl-64 max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -329,9 +330,9 @@ function PreBookingsContent() {
           </div>
 
           {loading ? (
-            <div className="p-16 flex flex-col items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-4" />
-              <p className="text-slate-400 text-sm">Loading pre-bookings…</p>
+            <div className="p-20 flex flex-col items-center justify-center min-h-[300px]">
+              <div className="theme-loader mb-8" />
+              <p className="text-slate-500 font-bold tracking-tight">Loading pre-bookings...</p>
             </div>
           ) : list.length === 0 ? (
             <div className="p-16 text-center">

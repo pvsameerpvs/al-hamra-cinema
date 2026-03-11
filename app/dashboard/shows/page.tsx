@@ -345,8 +345,8 @@ export default function ManageShowsPage() {
   // Show a blank loading screen while verifying role
   if (roleChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f7f8fc]">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 relative via-[#f8fafc] to-indigo-50/30">
+        <div className="theme-loader" />
       </div>
     );
   }
@@ -693,9 +693,9 @@ export default function ManageShowsPage() {
               </div>
 
               {loading ? (
-                <div className="p-16 flex flex-col items-center justify-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-4" />
-                  <p className="text-slate-400 text-sm">Loading shows…</p>
+                <div className="p-20 flex flex-col items-center justify-center min-h-[400px]">
+                  <div className="theme-loader mb-8" />
+                  <p className="text-slate-500 font-bold tracking-tight">Loading shows...</p>
                 </div>
               ) : filteredShows.length > 0 ? (
                 <div className="p-6 space-y-6">
