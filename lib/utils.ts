@@ -94,5 +94,7 @@ export function isShowStartInPastDubai(showDateIso: string, showTime: string, no
   // Dubai is UTC+04:00 (no DST)
   const showStartMs = Date.parse(`${showDateIso}T${pad2(t.hour)}:${pad2(t.minute)}:00+04:00`);
   if (isNaN(showStartMs)) return false;
-  return nowMs >= showStartMs;
+  // Allow booking for up to 1 hour (60 * 60 * 1000 ms) after the show starts
+  const oneHourMs = 60 * 60 * 1000;
+  return nowMs >= (showStartMs + oneHourMs);
 }
