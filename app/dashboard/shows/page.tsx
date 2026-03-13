@@ -27,6 +27,7 @@ import { formatTime12Hour } from "@/lib/utils";
 import { Sidebar } from "@/components/Sidebar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 let cachedShows: Show[] | null = null;
 const ratingOptions: MovieRating[] = ["PG", "PG 13", "PG 15", "PG 18", "G"];
@@ -41,6 +42,7 @@ export default function ManageShowsPage() {
   // Create / Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [addTimeModalOpen, setAddTimeModalOpen] = useState(false);
   const [movieTitle, setMovieTitle] = useState("");
   const [showTime, setShowTime] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -111,6 +113,7 @@ export default function ManageShowsPage() {
   const resetForm = () => {
     setEditingId(null);
     setIsCreating(false);
+    setAddTimeModalOpen(false);
     setMovieTitle("");
     setShowTime("");
     const todayIso = new Date().toISOString().split("T")[0];
@@ -121,6 +124,7 @@ export default function ManageShowsPage() {
   };
 
   const startEdit = (show: Show) => {
+    setAddTimeModalOpen(false);
     setIsCreating(false);
     setEditingId(show.id);
     setMovieTitle(show.movieTitle);
@@ -132,7 +136,8 @@ export default function ManageShowsPage() {
   };
 
   const startAddTimeToMovie = (show: Show) => {
-    setIsCreating(true);
+    setAddTimeModalOpen(true);
+    setIsCreating(false);
     setEditingId(null);
     setMovieTitle(show.movieTitle);
     setShowTime("");
@@ -143,7 +148,40 @@ export default function ManageShowsPage() {
     setEndDate(baseEnd);
     setRating(show.rating);
     setIsActive(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const startCreateShow = () => {
+    resetForm();
+    setIsCreating(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getShowTimeInputValue = () => {
+    if (!showTime) return "";
+    const match = showTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!match) return showTime;
+    const [, h, m, ampm] = match;
+    let hours = parseInt(h, 10);
+    if (ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
+    if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+    return `${hours.toString().padStart(2, "0")}:${m}`;
+  };
+
+  const handleShowTimeInputChange = (value: string) => {
+    if (!value) {
+      setShowTime("");
+      return;
+    }
+    if (!value.includes(":")) {
+      setShowTime(value);
+      return;
+    }
+    const [h, m] = value.split(":");
+    let hours = parseInt(h, 10);
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    setShowTime(`${hours.toString().padStart(2, "0")}:${m} ${ampm}`);
   };
 
   const handleCreateOrUpdate = async () => {
@@ -174,7 +212,7 @@ export default function ManageShowsPage() {
     setActionLoading(true);
     try {
       const payload = { movieTitle: trimmedTitle, showTime: trimmedTime, isActive, startDate, endDate, rating: trimmedRating };
-      if (isCreating) {
+      if (isCreating || addTimeModalOpen) {
         const res = await fetch("/api/shows", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -187,7 +225,7 @@ export default function ManageShowsPage() {
           upsertShowLocally(createdShow);
           setViewFilter(getBestFilterForShow(createdShow));
         }
-        toast({ title: "Success", description: "Show created successfully!" });
+        toast({ title: "Success", description: addTimeModalOpen ? "Show time added successfully!" : "Show created successfully!" });
       } else if (editingId) {
         const currentShow = shows.find((show) => show.id === editingId);
         const res = await fetch(`/api/shows/${editingId}`, {
@@ -470,9 +508,9 @@ export default function ManageShowsPage() {
             </div>
           </div>
 
-          {!isCreating && !editingId && (
+          {!isCreating && !editingId && !addTimeModalOpen && (
             <button
-              onClick={() => setIsCreating(true)}
+              onClick={startCreateShow}
               className="group flex gap-2 items-center px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-bold shadow-xl shadow-indigo-200/80 transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
@@ -614,27 +652,8 @@ export default function ManageShowsPage() {
                     </label>
                     <Input
                       type="time"
-                      value={(() => {
-                        if (!showTime) return "";
-                        const match = showTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                        if (!match) return showTime;
-                        const [, h, m, ampm] = match;
-                        let hours = parseInt(h, 10);
-                        if (ampm.toUpperCase() === "PM" && hours < 12) hours += 12;
-                        if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
-                        return `${hours.toString().padStart(2, "0")}:${m}`;
-                      })()}
-                      onChange={(e) => {
-                        const time24 = e.target.value;
-                        if (!time24) { setShowTime(""); return; }
-                        if (!time24.includes(":")) { setShowTime(time24); return; }
-                        const [h, m] = time24.split(":");
-                        let hours = parseInt(h, 10);
-                        const ampm = hours >= 12 ? "PM" : "AM";
-                        hours = hours % 12;
-                        hours = hours ? hours : 12;
-                        setShowTime(`${hours.toString().padStart(2, "0")}:${m} ${ampm}`);
-                      }}
+                      value={getShowTimeInputValue()}
+                      onChange={(e) => handleShowTimeInputChange(e.target.value)}
                       className="rounded-2xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50 hover:bg-white transition-all duration-300 h-12 shadow-sm"
                     />
                   </div>
@@ -969,6 +988,129 @@ export default function ManageShowsPage() {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={addTimeModalOpen}
+        onOpenChange={(open) => {
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl rounded-3xl border border-white/60 bg-white/95 p-0 shadow-[0_12px_40px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+          <div className="p-8">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-900 to-indigo-600">
+                Add New Show Time
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500">
+                Create another showtime for <span className="font-semibold text-slate-700">{movieTitle || "this movie"}</span> without changing the current new-show flow.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="text-sm font-semibold text-slate-600 mb-1.5 block flex items-center gap-1.5">
+                  <Film className="w-3.5 h-3.5 text-slate-400" />
+                  Movie Title
+                </label>
+                <Input
+                  value={movieTitle}
+                  disabled
+                  className="rounded-2xl border-slate-200 bg-slate-100 text-slate-500 h-12 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-600 mb-1.5 block flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  Show Time *
+                </label>
+                <Input
+                  type="time"
+                  value={getShowTimeInputValue()}
+                  onChange={(e) => handleShowTimeInputChange(e.target.value)}
+                  className="rounded-2xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50 hover:bg-white transition-all duration-300 h-12 shadow-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+              <div>
+                <label className="text-sm font-semibold text-slate-600 mb-1.5 block flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                  Start Date *
+                </label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-2xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50 hover:bg-white transition-all duration-300 h-12 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-600 mb-1.5 block flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                  End Date *
+                </label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-2xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50 hover:bg-white transition-all duration-300 h-12 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-600 mb-1.5 block flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-slate-400" />
+                  Rating *
+                </label>
+                <datalist id="ratingOptionsModal">
+                  {ratingOptions.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
+                <Input
+                  list="ratingOptionsModal"
+                  placeholder="e.g. PG, PG 13, PG 15"
+                  value={rating}
+                  onChange={(e) => setRating(e.target.value)}
+                  className="rounded-2xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50 hover:bg-white transition-all duration-300 h-12 shadow-sm font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 mb-8 p-4 bg-gradient-to-r from-slate-50 to-white rounded-2xl border border-slate-100 shadow-sm">
+              <input
+                type="checkbox"
+                id="activeToggleModal"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shadow-sm transition-colors"
+              />
+              <label htmlFor="activeToggleModal" className="text-sm font-bold text-slate-700 cursor-pointer select-none">
+                Active <span className="text-slate-400 font-medium ml-1.5">— Show appears in the public booking list</span>
+              </label>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleCreateOrUpdate}
+                disabled={actionLoading}
+                className="flex items-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-bold rounded-2xl shadow-lg shadow-indigo-200/50 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                {actionLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+                <Check className="w-5 h-5" />
+                Save Show Time
+              </button>
+              <button
+                onClick={resetForm}
+                disabled={actionLoading}
+                className="rounded-2xl px-6 py-3.5 h-auto border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold shadow-sm transition-all text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={deleteTargetId !== null}
