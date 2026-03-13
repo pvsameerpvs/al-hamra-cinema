@@ -1,10 +1,16 @@
 import { sheets, SPREADSHEET_ID } from "../google";
 import { MovieRating, Show } from "../types";
 import { isMockMode, mockStore } from "./shared";
+import { deleteSheetRows } from "./sheetUtils";
 
 let cachedShows: Show[] | null = null;
 let lastShowFetch = 0;
 const SHOWS_CACHE_TTL = 30 * 1000; // 30 seconds
+
+function clearShowsCache() {
+  cachedShows = null;
+  lastShowFetch = 0;
+}
 
 export async function fetchAllShows(): Promise<Show[]> {
   if (isMockMode()) {
@@ -23,7 +29,10 @@ export async function fetchAllShows(): Promise<Show[]> {
     });
 
     const rows = response.data.values;
-    if (!rows || rows.length === 0) return [];
+    if (!rows || rows.length === 0) {
+      clearShowsCache();
+      return [];
+    }
 
     const todayIso = new Date().toISOString().split("T")[0];
     const builtShows = rows.map((row) => {
@@ -76,6 +85,8 @@ export async function createShow(show: Show) {
       ]],
     },
   });
+
+  clearShowsCache();
 }
 
 export async function updateShow(showId: string, updatedShow: Partial<Show>) {
@@ -139,6 +150,8 @@ export async function updateShow(showId: string, updatedShow: Partial<Show>) {
       ]],
     },
   });
+
+  clearShowsCache();
 }
 
 export async function deleteShow(showId: string) {
@@ -147,6 +160,16 @@ export async function deleteShow(showId: string) {
     return;
   }
 
-  // It's safer to just set isActive to false rather than hard deleting the row.
-  await updateShow(showId, { isActive: false });
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "shows!A:A",
+  });
+
+  const ids = response.data.values?.map((r) => r[0]) || [];
+  const rowIndex = ids.indexOf(showId);
+
+  if (rowIndex === -1) throw new Error(`Show ${showId} not found`);
+
+  await deleteSheetRows("shows", [rowIndex + 1]);
+  clearShowsCache();
 }

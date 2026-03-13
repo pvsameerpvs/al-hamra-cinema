@@ -52,7 +52,9 @@ export default function ManageShowsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [togglingShowId, setTogglingShowId] = useState<string | null>(null);
   const [bulkMovieActionId, setBulkMovieActionId] = useState<string | null>(null);
+  const [deletingMovieTitle, setDeletingMovieTitle] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteMovieTarget, setDeleteMovieTarget] = useState<{ title: string; ids: string[] } | null>(null);
   const { toast } = useToast();
 
   // ── Role guard ──────────────────────────────────────────────────────────
@@ -87,6 +89,18 @@ export default function ManageShowsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const upsertShowLocally = (nextShow: Show) => {
+    setShows((currentShows) => {
+      const existingIndex = currentShows.findIndex((show) => show.id === nextShow.id);
+      const nextShows =
+        existingIndex === -1
+          ? [...currentShows, nextShow]
+          : currentShows.map((show) => (show.id === nextShow.id ? nextShow : show));
+      cachedShows = nextShows;
+      return nextShows;
+    });
   };
 
   useEffect(() => {
@@ -162,18 +176,30 @@ export default function ManageShowsPage() {
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error("Failed to create show");
+        const data = await res.json();
+        if (data?.show) {
+          const createdShow = data.show as Show;
+          upsertShowLocally(createdShow);
+          setViewFilter(getBestFilterForShow(createdShow));
+        }
         toast({ title: "Success", description: "Show created successfully!" });
       } else if (editingId) {
+        const currentShow = shows.find((show) => show.id === editingId);
         const res = await fetch(`/api/shows/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error("Failed to update show");
+        if (currentShow) {
+          const updatedShow: Show = { ...currentShow, ...payload, id: editingId };
+          upsertShowLocally(updatedShow);
+          setViewFilter(getBestFilterForShow(updatedShow));
+        }
         toast({ title: "Success", description: "Show updated successfully!" });
       }
       resetForm();
-      fetchShows();
+      await fetchShows();
     } catch (err) {
       toast({
         title: "Action Failed",
@@ -190,8 +216,13 @@ export default function ManageShowsPage() {
     try {
       const res = await fetch(`/api/shows/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete show");
+      setShows((currentShows) => {
+        const nextShows = currentShows.filter((show) => show.id !== id);
+        cachedShows = nextShows;
+        return nextShows;
+      });
       toast({ title: "Success", description: "Show deleted." });
-      fetchShows();
+      await fetchShows();
       return true;
     } catch (err) {
       toast({
@@ -209,7 +240,16 @@ export default function ManageShowsPage() {
     setDeleteTargetId(id);
   };
 
+  const handleDeleteMovie = (movieTitle: string, ids: string[]) => {
+    setDeleteMovieTarget({ title: movieTitle, ids });
+  };
+
   const todayIso = new Date().toISOString().split("T")[0];
+  const getBestFilterForShow = (show: Pick<Show, "isActive" | "startDate" | "endDate">): "running" | "archived" | "all" => {
+    if (!show.isActive || show.endDate < todayIso) return "archived";
+    if (show.startDate <= todayIso && show.endDate >= todayIso) return "running";
+    return "all";
+  };
   const isCurrentlyRunning = (show: Show) => show.isActive && show.startDate <= todayIso && show.endDate >= todayIso;
   const isArchivedShow = (show: Show) => !show.isActive || show.endDate < todayIso;
   const runningShows = shows.filter(isCurrentlyRunning);
@@ -222,6 +262,18 @@ export default function ManageShowsPage() {
     if (viewFilter === "archived") return isArchivedShow(show);
     return true;
   });
+  const movieDisplayOrder = new Map<string, number>();
+  filteredShows.forEach((show, index) => {
+    movieDisplayOrder.set(show.movieTitle, index);
+  });
+  const groupedFilteredShows = Object.entries(
+    filteredShows.reduce((acc, show) => {
+      const key = show.movieTitle;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(show);
+      return acc;
+    }, {} as Record<string, Show[]>)
+  ).sort(([movieA], [movieB]) => (movieDisplayOrder.get(movieB) ?? 0) - (movieDisplayOrder.get(movieA) ?? 0));
   const statusCounts = {
     running: runningShows.length,
     archived: archivedShows.length,
@@ -342,6 +394,39 @@ export default function ManageShowsPage() {
     }
   };
 
+  const performDeleteMovie = async (movieTitle: string, ids: string[]): Promise<boolean> => {
+    setDeletingMovieTitle(movieTitle);
+    try {
+      const responses = await Promise.all(
+        ids.map((id) => fetch(`/api/shows/${id}`, { method: "DELETE" }))
+      );
+      if (responses.some((res) => !res.ok)) throw new Error("Failed to delete one or more shows");
+
+      setShows((currentShows) => {
+        const idSet = new Set(ids);
+        const nextShows = currentShows.filter((show) => !idSet.has(show.id));
+        cachedShows = nextShows;
+        return nextShows;
+      });
+
+      toast({
+        title: "Movie deleted",
+        description: `${movieTitle} and all its showtimes were removed.`,
+      });
+      await fetchShows();
+      return true;
+    } catch (err) {
+      toast({
+        title: "Movie delete failed",
+        description: err instanceof Error ? err.message : "Network error",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setDeletingMovieTitle(null);
+    }
+  };
+
   // Show a blank loading screen while verifying role
   if (roleChecking) {
     return (
@@ -432,35 +517,37 @@ export default function ManageShowsPage() {
                 })}
               </div>
             </div>
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.3em]">Ended Movies</p>
-                  <p className="text-base font-bold text-slate-800 mt-1">Auto-archive</p>
+            {viewFilter === "archived" && (
+              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.3em]">Ended Movies</p>
+                    <p className="text-base font-bold text-slate-800 mt-1">Auto-archive</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                    <Archive className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
-                  <Archive className="w-4 h-4" />
-                </div>
-              </div>
-              {archivedMovieSummary.length > 0 ? (
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {archivedMovieSummary.map((movie) => (
-                    <div key={`${movie.title}-${movie.endedOn}`} className="p-3 rounded-xl border border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">{movie.title}</p>
-                        <p className="text-xs text-slate-400">Ended {formatDateShort(movie.endedOn, true)}</p>
+                {archivedMovieSummary.length > 0 ? (
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    {archivedMovieSummary.map((movie) => (
+                      <div key={`${movie.title}-${movie.endedOn}`} className="p-3 rounded-xl border border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">{movie.title}</p>
+                          <p className="text-xs text-slate-400">Ended {formatDateShort(movie.endedOn, true)}</p>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold border border-slate-200 bg-white text-slate-600">
+                          <Shield className="w-3 h-3 text-slate-400" />
+                          {movie.rating}
+                        </span>
                       </div>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold border border-slate-200 bg-white text-slate-600">
-                        <Shield className="w-3 h-3 text-slate-400" />
-                        {movie.rating}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400">No movies have ended yet.</p>
-              )}
-            </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">No movies have ended yet.</p>
+                )}
+              </div>
+            )}
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -699,18 +786,12 @@ export default function ManageShowsPage() {
                 </div>
               ) : filteredShows.length > 0 ? (
                 <div className="p-6 space-y-6">
-                  {Object.entries(
-                    filteredShows.reduce((acc, show) => {
-                      const key = show.movieTitle;
-                      if (!acc[key]) acc[key] = [];
-                      acc[key].push(show);
-                      return acc;
-                    }, {} as Record<string, Show[]>)
-                  ).map(([movieGroupTitle, movieShows]) => {
+                  {groupedFilteredShows.map(([movieGroupTitle, movieShows]) => {
                     const anchorShow = movieShows[0];
                     const groupArchived = movieShows.every(isArchivedShow);
                     const movieAnyActive = movieShows.some((show) => show.isActive);
                     const bulkActionLoading = bulkMovieActionId === movieGroupTitle;
+                    const bulkDeleteLoading = deletingMovieTitle === movieGroupTitle;
                     return (
                       <div key={movieGroupTitle} className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 bg-white group">
                         <div className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 px-5 lg:px-6 py-5 flex flex-col gap-4">
@@ -748,12 +829,12 @@ export default function ManageShowsPage() {
                               </button>
                               <button
                                 onClick={() => toggleMovieArchive(movieShows, movieAnyActive)}
-                                disabled={bulkActionLoading}
+                                disabled={bulkActionLoading || bulkDeleteLoading}
                                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${
                                   movieAnyActive
                                     ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                     : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                                } ${bulkActionLoading ? "opacity-60" : ""}`}
+                                } ${bulkActionLoading || bulkDeleteLoading ? "opacity-60" : ""}`}
                                 title={movieAnyActive ? "Archive entire movie" : "Restore entire movie"}
                               >
                                 {bulkActionLoading ? (
@@ -764,6 +845,21 @@ export default function ManageShowsPage() {
                                   <Undo2 className="w-4 h-4" />
                                 )}
                                 {movieAnyActive ? "Archive Movie" : "Restore Movie"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMovie(movieGroupTitle, movieShows.map((show) => show.id))}
+                                disabled={bulkActionLoading || bulkDeleteLoading}
+                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all ${
+                                  bulkActionLoading || bulkDeleteLoading ? "opacity-60" : ""
+                                }`}
+                                title="Delete entire movie"
+                              >
+                                {bulkDeleteLoading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                                Delete Movie
                               </button>
                             </div>
                             {groupArchived && (
@@ -879,6 +975,26 @@ export default function ManageShowsPage() {
         onConfirm={async () => {
           if (!deleteTargetId) return false;
           const ok = await performDeleteShow(deleteTargetId);
+          return ok;
+        }}
+      />
+      <ConfirmDialog
+        open={deleteMovieTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteMovieTarget(null);
+        }}
+        title="Delete movie?"
+        description={
+          deleteMovieTarget
+            ? `Delete ${deleteMovieTarget.title} and all its showtimes? This cannot be undone.`
+            : "Delete this movie and all its showtimes? This cannot be undone."
+        }
+        confirmText="Yes, delete movie"
+        cancelText="No"
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!deleteMovieTarget) return false;
+          const ok = await performDeleteMovie(deleteMovieTarget.title, deleteMovieTarget.ids);
           return ok;
         }}
       />
