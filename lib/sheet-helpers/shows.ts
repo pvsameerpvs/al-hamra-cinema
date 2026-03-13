@@ -12,6 +12,14 @@ function clearShowsCache() {
   lastShowFetch = 0;
 }
 
+function normalizeMovieRating(value?: string): MovieRating {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+  return normalized || "PG 13";
+}
+
 export async function fetchAllShows(): Promise<Show[]> {
   if (isMockMode()) {
     return mockStore.mockShows;
@@ -38,9 +46,7 @@ export async function fetchAllShows(): Promise<Show[]> {
     const builtShows = rows.map((row) => {
       const startDate = row[4] || todayIso;
       const endDate = row[5] || startDate;
-      const ratingRaw = (row[6] || "PG 13").toUpperCase();
-      const allowedRatings: MovieRating[] = ["PG 13", "PG 18", "PG", "G"];
-      const rating = (allowedRatings.find((r) => r === ratingRaw) || "PG 13") as MovieRating;
+      const rating = normalizeMovieRating(row[6]);
       return {
         id: row[0],
         movieTitle: row[1],
@@ -117,13 +123,6 @@ export async function updateShow(showId: string, updatedShow: Partial<Show>) {
   const currentRow = currentShowRes.data.values?.[0];
   if (!currentRow) throw new Error(`Row data for ${showId} not found`);
 
-  const allowedRatings: MovieRating[] = ["PG 13", "PG 18", "PG", "G"];
-  const safeRating = (value?: string) => {
-    if (!value) return currentRow[6] || "PG 13";
-    const normalized = value.toUpperCase();
-    return allowedRatings.includes(normalized as MovieRating) ? normalized : "PG 13";
-  };
-
   const mergedShow = {
     id: showId,
     movieTitle: updatedShow.movieTitle !== undefined ? updatedShow.movieTitle : currentRow[1],
@@ -131,7 +130,7 @@ export async function updateShow(showId: string, updatedShow: Partial<Show>) {
     isActive: updatedShow.isActive !== undefined ? (updatedShow.isActive ? "TRUE" : "FALSE") : currentRow[3],
     startDate: updatedShow.startDate !== undefined ? updatedShow.startDate : currentRow[4],
     endDate: updatedShow.endDate !== undefined ? updatedShow.endDate : currentRow[5],
-    rating: safeRating(updatedShow.rating),
+    rating: updatedShow.rating !== undefined ? normalizeMovieRating(updatedShow.rating) : normalizeMovieRating(currentRow[6]),
   };
 
   await sheets.spreadsheets.values.update({

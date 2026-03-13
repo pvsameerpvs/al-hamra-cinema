@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchAllShows, updateShow, deleteShow } from "@/lib/sheetHelpers";
-import { MovieRating, Show } from "@/lib/types";
+import { Show } from "@/lib/types";
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -8,7 +8,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json();
 
     const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
-    const allowedRatings: MovieRating[] = ["PG 13", "PG 18", "PG", "G"];
     const sanitized: Partial<Show> = {};
 
     if (typeof body.movieTitle === "string") {
@@ -60,11 +59,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       if (typeof body.rating !== "string") {
         return NextResponse.json({ error: "Invalid rating" }, { status: 400 });
       }
-      const normalized = body.rating.toUpperCase();
-      if (!allowedRatings.includes(normalized as MovieRating)) {
-        return NextResponse.json({ error: "Unsupported rating" }, { status: 400 });
+      const normalized = body.rating.trim().replace(/\s+/g, " ").toUpperCase();
+      if (!normalized) {
+        return NextResponse.json({ error: "Rating is required" }, { status: 400 });
       }
-      sanitized.rating = normalized as MovieRating;
+      sanitized.rating = normalized;
     }
 
     await updateShow(id, sanitized);

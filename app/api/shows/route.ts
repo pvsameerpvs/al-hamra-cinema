@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { fetchAllShows, createShow } from "@/lib/sheetHelpers";
-import { MovieRating } from "@/lib/types";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
@@ -39,11 +38,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const allowedRatings: MovieRating[] = ["PG 13", "PG 18", "PG", "G"];
-    const normalizedRating = typeof rating === "string" ? rating.toUpperCase() : "PG 13";
-    const safeRating = (allowedRatings.includes(normalizedRating as MovieRating)
-      ? normalizedRating
-      : "PG 13") as MovieRating;
+    const safeRating = typeof rating === "string"
+      ? rating.trim().replace(/\s+/g, " ").toUpperCase()
+      : "PG 13";
+
+    if (!safeRating) {
+      return NextResponse.json(
+        { error: "Rating is required" },
+        { status: 400 }
+      );
+    }
 
     const newShow = {
       id: uuidv4(),

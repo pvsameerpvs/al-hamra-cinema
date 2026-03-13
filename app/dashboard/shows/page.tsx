@@ -29,7 +29,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
 
 let cachedShows: Show[] | null = null;
-const ratingOptions: MovieRating[] = ["PG 13", "PG 18"];
+const ratingOptions: MovieRating[] = ["PG", "PG 13", "PG 15", "PG 18", "G"];
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function ManageShowsPage() {
@@ -149,8 +149,13 @@ export default function ManageShowsPage() {
   const handleCreateOrUpdate = async () => {
     const trimmedTitle = movieTitle.trim();
     const trimmedTime = showTime.trim();
+    const trimmedRating = rating.trim().replace(/\s+/g, " ").toUpperCase();
     if (!trimmedTitle || !trimmedTime) {
       toast({ title: "Validation Error", description: "Movie title and show time are required.", variant: "destructive" });
+      return;
+    }
+    if (!trimmedRating) {
+      toast({ title: "Validation Error", description: "Movie rating is required.", variant: "destructive" });
       return;
     }
     if (!startDate || !isoDatePattern.test(startDate)) {
@@ -168,7 +173,7 @@ export default function ManageShowsPage() {
 
     setActionLoading(true);
     try {
-      const payload = { movieTitle: trimmedTitle, showTime: trimmedTime, isActive, startDate, endDate, rating };
+      const payload = { movieTitle: trimmedTitle, showTime: trimmedTime, isActive, startDate, endDate, rating: trimmedRating };
       if (isCreating) {
         const res = await fetch("/api/shows", {
           method: "POST",
@@ -664,15 +669,18 @@ export default function ManageShowsPage() {
                       <Shield className="w-3.5 h-3.5 text-slate-400" />
                       Rating *
                     </label>
-                    <select
-                      value={rating}
-                      onChange={(e) => setRating(e.target.value as MovieRating)}
-                      className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-white focus:border-indigo-500 focus:ring-indigo-200 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-300"
-                    >
+                    <datalist id="ratingOptions">
                       {ratingOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
+                        <option key={option} value={option} />
                       ))}
-                    </select>
+                    </datalist>
+                    <Input
+                      list="ratingOptions"
+                      placeholder="e.g. PG, PG 13, PG 15"
+                      value={rating}
+                      onChange={(e) => setRating(e.target.value)}
+                      className="rounded-2xl border-slate-200 focus:border-indigo-500 focus:ring-indigo-200 bg-slate-50 hover:bg-white transition-all duration-300 h-12 shadow-sm font-semibold"
+                    />
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mb-8 p-4 bg-gradient-to-r from-slate-50 to-white rounded-2xl border border-slate-100 shadow-sm">

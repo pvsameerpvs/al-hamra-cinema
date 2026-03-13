@@ -29,7 +29,7 @@ export interface RevenueLog {
   date: string;
 }
 
-export type MovieRating = "PG 13" | "PG 18" | "PG" | "G";
+export type MovieRating = string;
 
 export interface Show {
   id: string;
