@@ -14,6 +14,15 @@ function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function getLocalIsoDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+
 export default function DailyReportPage() {
   return (
     <Suspense fallback={<div className="p-16 flex justify-center"><div className="theme-loader" /></div>}>
@@ -30,9 +39,7 @@ function DailyReportContent() {
 
   const [selectedMovie, setSelectedMovie] = useState<string>("all");
   const [selectedShowTime, setSelectedShowTime] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalIsoDate());
   const [distributorName, setDistributorName] = useState<string>("");
   const [printActive, setPrintActive] = useState(false);
   const printPortalRef = useRef<HTMLElement | null>(null);
@@ -183,7 +190,7 @@ function DailyReportContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const fileDate = selectedDate || new Date().toISOString().split("T")[0];
+    const fileDate = selectedDate || getLocalIsoDate();
     a.download = `daily_report_${fileDate}.json`;
     document.body.appendChild(a);
     a.click();

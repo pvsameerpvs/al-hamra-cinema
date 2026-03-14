@@ -4,10 +4,19 @@ import { computeDailyReport } from "@/lib/dailyReport";
 
 export const dynamic = "force-dynamic";
 
+function getDubaiIsoDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const selectedDate = searchParams.get("selectedDate") || new Date().toISOString().split("T")[0];
+    const selectedDate = searchParams.get("selectedDate") || getDubaiIsoDate();
     const selectedMovie = searchParams.get("selectedMovie") || "all";
     const selectedShowTime = searchParams.get("selectedShowTime") || "all";
 

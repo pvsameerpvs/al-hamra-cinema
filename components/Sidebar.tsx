@@ -9,6 +9,7 @@ import {
   Ticket,
   History,
   Bookmark,
+  FileText,
  
 } from "lucide-react";
 
@@ -105,7 +106,7 @@ export function Sidebar() {
           <Bookmark className="w-4 h-4" />
           Pre-Bookings
         </Link>
-        {/* <Link
+        <Link
           href="/dashboard/reports/daily"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
             pathname.startsWith("/dashboard/reports/daily")
@@ -115,7 +116,7 @@ export function Sidebar() {
         >
           <FileText className="w-4 h-4" />
           Daily Report
-        </Link> */}
+        </Link>
       </nav>
 
       {/* Footer */}
