@@ -205,7 +205,7 @@ export function computeDailyReport(
   const grandTotalTodayTickets = allRows.reduce((acc, row) => acc + row.todayTicketsSold, 0);
   const grandTotalGross = round2(allRows.reduce((acc, row) => acc + row.grossCollection, 0));
   const municipalTax = round2(grandTotalGross * 0.1);
-  const netAmount = round2(grandTotalGross + municipalTax);
+  const netAmount = round2(grandTotalGross - municipalTax);
   const distributorShare = round2(netAmount * 0.5);
 
   return {
