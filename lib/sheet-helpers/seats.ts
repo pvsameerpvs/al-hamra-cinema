@@ -20,7 +20,7 @@ export async function fetchAllSeats(showKey?: string, showDate?: string): Promis
           row,
           seat_number: i,
           status: "Available",
-          price: 30,
+          price: 35,
         });
       }
     });

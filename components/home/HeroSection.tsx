@@ -39,7 +39,7 @@ export function HeroSection() {
               Balcony: 35 AED
             </span>
             <span className="rounded-full border border-border bg-background/70 px-3 py-1">
-              Orchestra: 30 AED
+              Orchestra: 35 AED
             </span>
           </div>
 

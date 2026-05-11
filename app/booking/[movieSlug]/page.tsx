@@ -19,15 +19,17 @@ export default async function MovieShowtimesPage({
   params,
   searchParams,
 }: {
-  params: { movieSlug: string };
-  searchParams?: { date?: string };
+  params: Promise<{ movieSlug: string }>;
+  searchParams?: Promise<{ date?: string }>;
 }) {
+  const { movieSlug } = await params;
+  const search = searchParams ? await searchParams : {};
   const allShows = await fetchAllShows();
 
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
-  const bookingDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
-    ? searchParams.date
+  const bookingDateIso = search?.date && isoDatePattern.test(search.date)
+    ? search.date
     : todayIso;
   const activeShows = allShows.filter(
     (s) => s.isActive && s.startDate <= bookingDateIso && s.endDate >= bookingDateIso
@@ -42,10 +44,10 @@ export default async function MovieShowtimesPage({
   // Find the exact movie title that matches this slug
   // The slug was created using: movieTitle.replace(/\s+/g, '-').toLowerCase()
   const matchingShows = activeShows.filter(
-    s => s.movieTitle.replace(/\s+/g, '-').toLowerCase() === params.movieSlug
+    s => s.movieTitle.replace(/\s+/g, '-').toLowerCase() === movieSlug
   );
 
-  const movieTitle = matchingShows.length > 0 ? matchingShows[0].movieTitle : params.movieSlug.replace(/-/g, ' ').toUpperCase();
+  const movieTitle = matchingShows.length > 0 ? matchingShows[0].movieTitle : movieSlug.replace(/-/g, ' ').toUpperCase();
   const runSummary = matchingShows.length
     ? matchingShows.reduce(
         (acc, show) => {
@@ -133,7 +135,7 @@ export default async function MovieShowtimesPage({
                 ) : (
                   <Link
                     key={show.id}
-                    href={`/booking/${params.movieSlug}/${show.id}?date=${encodeURIComponent(bookingDateIso)}`}
+                    href={`/booking/${movieSlug}/${show.id}?date=${encodeURIComponent(bookingDateIso)}`}
                     className={cardClass}
                   >
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-5 transition-opacity">

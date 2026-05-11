@@ -22,7 +22,7 @@ export async function GET() {
     for (const row of orchestraRows) {
       for (let i = 1; i <= 37; i++) {
         const id = `O-${row}-${i.toString().padStart(2, "0")}`;
-        newSeats.push([id, "Orchestra", row, i, "Available", 30]);
+        newSeats.push([id, "Orchestra", row, i, "Available", 35]);
       }
     }
 

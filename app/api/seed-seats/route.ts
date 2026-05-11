@@ -24,7 +24,7 @@ export async function GET() {
           row,
           seat_number: i,
           status: "Available",
-          price: 30,
+          price: 35,
         });
       }
     });

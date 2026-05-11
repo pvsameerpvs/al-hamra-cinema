@@ -233,7 +233,7 @@ export function SeatGrid({
         <div className="absolute inset-0 bg-gradient-to-t from-indigo-50/50 to-transparent rounded-3xl -z-10 blur-xl"></div>
         <div className="text-center mb-6">
           <Badge variant="outline" className="px-4 py-1.5 text-base font-semibold border-slate-200 bg-white text-slate-600 shadow-sm">
-            Orchestra : 30 AED
+            Orchestra : 35 AED
           </Badge>
         </div>
         <div className="w-full overflow-visible pb-4 px-0.5">

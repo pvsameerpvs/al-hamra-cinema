@@ -19,13 +19,16 @@ export default async function ShowTimeBookingPage({
   params,
   searchParams,
 }: {
-  params: { movieSlug: string; showId: string };
-  searchParams?: { date?: string };
+  params: Promise<{ movieSlug: string; showId: string }>;
+  searchParams?: Promise<{ date?: string }>;
 }) {
+  const { movieSlug, showId } = await params;
+  const search = searchParams ? await searchParams : {};
+
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
-  const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
-    ? searchParams.date
+  const showDateIso = search?.date && isoDatePattern.test(search.date)
+    ? search.date
     : todayIso;
 
   const allShows = await fetchAllShows();
@@ -34,7 +37,7 @@ export default async function ShowTimeBookingPage({
   );
   
   // Find the exact show matching explicitly by ID
-  const show = activeShows.find(s => s.id === params.showId);
+  const show = activeShows.find(s => s.id === showId);
 
   if (!show) {
     return (
@@ -44,7 +47,7 @@ export default async function ShowTimeBookingPage({
         <div className="flex flex-col items-center justify-center p-16 pt-32">
           <h2 className="text-xl font-bold text-slate-800 mb-2">Show Not Found</h2>
           <p className="text-slate-500 mb-4">This show time is inactive or does not exist.</p>
-          <Link href={`/booking/${params.movieSlug}`} className="text-indigo-600 font-medium">
+          <Link href={`/booking/${movieSlug}`} className="text-indigo-600 font-medium">
             &larr; Back to shows
           </Link>
         </div>
@@ -73,7 +76,7 @@ export default async function ShowTimeBookingPage({
           <p className="text-slate-500 mb-6">
             This show time has already passed for <strong className="text-slate-700">{showDateLabel}</strong>.
           </p>
-          <Link href={`/booking/${params.movieSlug}?date=${encodeURIComponent(showDateIso)}`} className="text-indigo-600 font-medium">
+          <Link href={`/booking/${movieSlug}?date=${encodeURIComponent(showDateIso)}`} className="text-indigo-600 font-medium">
             &larr; Back to shows
           </Link>
         </div>
@@ -90,7 +93,7 @@ export default async function ShowTimeBookingPage({
         <section className="mx-auto max-w-5xl px-4 pb-6 md:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <Link
-              href={`/booking/${params.movieSlug}?date=${encodeURIComponent(showDateIso)}`}
+              href={`/booking/${movieSlug}?date=${encodeURIComponent(showDateIso)}`}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl text-sm font-medium transition-colors w-fit shadow-sm"
             >
               <MoveLeft className="w-4 h-4" />

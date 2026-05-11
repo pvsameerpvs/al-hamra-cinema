@@ -17,14 +17,15 @@ const formatIsoDate = (iso: string) => {
 export default async function PublicShowsPage({
   searchParams,
 }: {
-  searchParams?: { date?: string };
+  searchParams?: Promise<{ date?: string }>;
 }) {
   const allShows = await fetchAllShows();
 
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   const todayIso = new Date().toISOString().split("T")[0];
-  const showDateIso = searchParams?.date && isoDatePattern.test(searchParams.date)
-    ? searchParams.date
+  const search = searchParams ? await searchParams : {};
+  const showDateIso = search?.date && isoDatePattern.test(search.date)
+    ? search.date
     : todayIso;
 
   const activeShows = allShows.filter(

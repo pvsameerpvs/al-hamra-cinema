@@ -186,7 +186,7 @@ export function BookingDialog({
                 </div>
 
                  <div className="bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-xs text-center font-semibold shadow-sm">
-                   Note: Rates shown (35 AED Balcony / 30 AED Orchestra) are before VAT. A 5% VAT is added at checkout.
+                   Note: Rates shown (35 AED Balcony / 35 AED Orchestra) are before VAT. A 5% VAT is added at checkout.
                  </div>
 
                 <div className="grid gap-2">
