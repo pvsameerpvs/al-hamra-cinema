@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { fetchAllShows, updateShow, deleteShow } from "@/lib/sheetHelpers";
 import { Show } from "@/lib/types";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -81,9 +81,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     await deleteShow(id);
 

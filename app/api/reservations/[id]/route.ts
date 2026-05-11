@@ -3,9 +3,9 @@ import { deleteReservationRecord, updateReservationStatus } from "@/lib/sheetHel
 import type { ReservationStatus } from "@/lib/types";
 import { getSession } from "@/lib/auth";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const status = (body?.status as ReservationStatus | undefined) || "Cancelled";
 
@@ -19,13 +19,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    const { id } = params;
+    const { id } = await params;
     if (!id) return NextResponse.json({ error: "Missing reservation id" }, { status: 400 });
 
     await deleteReservationRecord(id);

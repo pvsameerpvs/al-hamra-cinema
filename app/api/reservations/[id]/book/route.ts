@@ -10,9 +10,9 @@ import {
 
 type PaymentMethod = "CASH" | "BANK";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const reservationId = params?.id;
+    const { id: reservationId } = await params;
     if (!reservationId) {
       return NextResponse.json({ error: "Missing reservation id" }, { status: 400 });
     }
