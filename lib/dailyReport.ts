@@ -37,7 +37,7 @@ export type DailyReportComputation = {
 
 const CLASS_PRICES: Record<SeatClass, number> = {
   B: 35,
-  O: 30,
+  O: 35,
 };
 
 function round2(n: number) {
